@@ -1,0 +1,3 @@
+# Local configuration template. Copy as config_local.py (not versioned) and
+# set the /exec URL of the Sheet's Apps Script Web App.
+SCRIPT_URL = "https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec"

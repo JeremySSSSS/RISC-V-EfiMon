@@ -1,0 +1,2 @@
+fecha,programa,n_alu,n_mul,n_mulh,n_div,n_mem,n_ctrl,n_float,c_div,mcycle
+2026-07-12 16:09:56,mixto_float,44441,687,633,1960,836,4380,880,49957,112005

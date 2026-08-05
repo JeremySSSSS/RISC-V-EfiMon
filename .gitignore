@@ -1,0 +1,28 @@
+# --- secretos (NUNCA subir) ---
+**/secrets.h
+**/config_local.py
+*.env
+credentials*
+
+# --- python ---
+__pycache__/
+*.pyc
+
+# --- artefactos de build firmware ---
+*.elf
+*.o
+*.hex
+*.bin
+*.dump
+*.map
+*.lst
+
+# --- simulacion / vivado ---
+xsim.dir/
+*.sdb
+*.jou
+*.wdb
+*.pb
+.Xil/
+.bender/
+vivado*.log

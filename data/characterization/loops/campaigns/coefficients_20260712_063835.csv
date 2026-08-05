@@ -1,0 +1,11 @@
+# Bucles dominados (M1). Generado 2026-07-12 06:38:35.,coef=(P_cat-P_idle)*T/n; div usa DIVCYC.
+parametro,coef,unidad
+P_idle,1.146746,W
+T_idle,38.67,C
+alu,2.116049e-09,J/instr
+mul,1.204729e-09,J/instr
+mulh,4.587548e-09,J/instr
+div,2.942188e-10,J/ciclo
+mem,2.025818e-09,J/instr
+ctrl,5.001173e-09,J/instr
+float,2.483932e-09,J/instr
