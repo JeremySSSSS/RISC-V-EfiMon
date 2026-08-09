@@ -5,13 +5,6 @@ Hardware instruction classifier integrated into the RISC-V **CV32E40P** core
 consumption of bare-metal firmware from per-category retired-instruction
 counters exposed through CSRs.
 
-The model instantiates the EfiMon approach with event rates measured in
-hardware instead of OS-sampled proportions:
-
-```
-P = P_idle + ( Σ e_i · n_i + p_div · c_div ) / T
-```
-
 ## Layout
 
 ```
@@ -41,27 +34,16 @@ data/       Measurement data (see data/README.md)
 
 Fourteen 64-bit counters: 6 integer categories (`alu`, `mul`, `mulh`,
 `div`, `mem`, `ctrl`) + 7 floating-point (`fp_add`, `fp_mul`, `fp_fma`,
-`fp_div`, `fp_sqrt`, `fp_noncomp`, `fp_conv`) + one divider-busy cycle
-counter (`c_div`). Counting happens at instruction **retirement**, reading
+`fp_div`, `fp_sqrt`, `fp_noncomp`, `fp_conv`). Counting happens at instruction **retirement**, reading
 the operands from the EX stage.
 
 ## Characterization methods
 
 1. **Dominated loops** — each loop runs ≥95 % of a single category;
-   `e_i = (P_cat − P_idle)·T / n`. The divider is measured by cycles (`c_div`).
+   `e_i = (P_cat − P_idle)·T / n`.
 2. **NNLS regression (EfiMon)** — non-negative fit with intercept over an
    intensity sweep (100/60/30 % duty). Absolute rates `n_i/T` avoid the
    collinearity of proportions.
-
-## Configuration (secrets)
-
-WiFi credentials and the power-meter Apps Script URL are **not** in the
-repo. Copy the templates and fill in your own values locally:
-
-```
-cp firmware/common/config_local.py.example    firmware/common/config_local.py
-cp firmware/esp32_ina228/secrets.h.example    firmware/esp32_ina228/secrets.h
-```
 
 ## License note
 
