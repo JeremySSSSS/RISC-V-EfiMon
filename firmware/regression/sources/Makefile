@@ -21,6 +21,16 @@ OUT := ../elf
 BENCH := memcpy fsm crc matmul mulhash64 mulhscale dotprod gcd modpow trialdiv radix fpoly vecscale histogram sort wmac fir ratscale modmul memfill mulhstream
 ELFS := $(addprefix $(OUT)/,$(addsuffix .elf,$(BENCH)))
 
+# Sondas por-categoria FP: un kernel DOMINADO por cada una de las 7 categorias
+# float, para dar cobertura de regresion a fp_add/fp_mul/fp_fma/fp_div/fp_sqrt/
+# fp_noncomp/fp_conv (el set BENCH solo excita fp_mul/fp_conv/fp_fma via
+# fpoly/dotprod/vecscale). NO estan en BENCH ni en DEFAULT_PROGS: se prueban una
+# por una porque en el bitstream actual la FPU cuelga con fdiv/fsqrt y cadenas
+# fmadd dependientes -> se corren con `characterize.py regression fpadd ...` y se
+# integran al set las que sobrevivan.
+FP_PROBE := fpadd fpmul fpfma fpdiv fpsqrt fpnoncomp fpconv
+FP_ELFS := $(addprefix $(OUT)/,$(addsuffix .elf,$(FP_PROBE)))
+
 FLAGS := -nostdlib -nostartfiles -static -Os -g -mabi=ilp32 \
 	-Wl,-T,link.ld -Wl,--build-id=none -I.
 KFLAGS := $(FLAGS) -fno-builtin -fno-tree-loop-distribute-patterns
@@ -29,6 +39,9 @@ KFLAGS := $(FLAGS) -fno-builtin -fno-tree-loop-distribute-patterns
 include duty_variants.mk
 
 all: $(ELFS) $(DUTY_ELFS) $(OUT)/idle.elf
+# sondas fp aparte (no rompen 'all' si una no linkea): make fp
+.PHONY: fp
+fp: $(FP_ELFS)
 
 # idle de referencia (wfi, piso pasivo) ~30 s -> da P_idle medido en sesion.
 # .S auto-contenido (su propio _start), no usa harness.S.
@@ -101,5 +114,23 @@ $(OUT)/memfill.elf: harness.S wl_memfill.c platform.inc link.ld
 $(OUT)/mulhstream.elf: harness.S wl_mulhstream.c platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imc -DREPS=30000 -o $@ harness.S wl_mulhstream.c
 
+# --- sondas por-categoria FP (rv32imfc, -ffp-contract=off para no fusionar en
+# fmadd; cada lazo caliente dominado por SU categoria). REPS bajos en div/sqrt/
+# fma: son lentas y candidatas a colgar en este bitstream. ---
+$(OUT)/fpadd.elf: harness.S wl_fpadd.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=40000 -o $@ harness.S wl_fpadd.c
+$(OUT)/fpmul.elf: harness.S wl_fpmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=40000 -o $@ harness.S wl_fpmul.c
+$(OUT)/fpnoncomp.elf: harness.S wl_fpnoncomp.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=40000 -o $@ harness.S wl_fpnoncomp.c
+$(OUT)/fpconv.elf: harness.S wl_fpconv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=40000 -o $@ harness.S wl_fpconv.c
+$(OUT)/fpfma.elf: harness.S wl_fpfma.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=30000 -o $@ harness.S wl_fpfma.c
+$(OUT)/fpdiv.elf: harness.S wl_fpdiv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=15000 -o $@ harness.S wl_fpdiv.c
+$(OUT)/fpsqrt.elf: harness.S wl_fpsqrt.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=15000 -o $@ harness.S wl_fpsqrt.c
+
 clean:
-	rm -f $(ELFS)
+	rm -f $(ELFS) $(FP_ELFS)
