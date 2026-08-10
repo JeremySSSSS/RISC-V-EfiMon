@@ -143,6 +143,14 @@ def cmd_de(req):
         n = min(max(int(req.get("campaigns", 1)), 1), 10)
         suf = f" x{n} tandas" if n > 1 else ""
         return (f"Validar ambos metodos ({len(progs)} prog){suf}", [cmd] * n)
+    if a == "m1full":
+        cats = [c for c in req.get("cats", []) if c in CATS] or CATS
+        m1 = PY + ["characterize.py", "loops"] + cats
+        kbs = [x for x in req.get("kb", "").replace(" ", "").split(",") if x.isdigit()] \
+              or ["4", "8", "16", "24", "32", "48", "64", "96", "128", "192", "256"]
+        lcref = min(max(int(req.get("lcref", 20000)), 500), 2000000)
+        sw = PY + ["sweep_fetch.py", "--kb", ",".join(kbs), "--lc-ref", str(lcref)]
+        return ("M1 full (loops -> fetch)", [m1, sw])
     if a == "sweep":
         kbs = [x for x in req.get("kb", "").replace(" ", "").split(",") if x.isdigit()]
         if not kbs:
@@ -238,7 +246,8 @@ def pagina():
  <div class="fila">repeticiones <input type="number" id="m1rep" value="1" min="1" max="30" style="width:52px">
   tandas <input type="number" id="m1n" value="1" min="1" max="10" style="width:52px">
   <label class="chip"><input type="checkbox" id="m1nb">no recompilar</label>
-  <button onclick="m1()">Caracterizar M1</button></div>
+  <button onclick="m1()">Caracterizar M1</button>
+  <button onclick="m1full()" style="background:#1f7a4d">M1 + Fetch (loops &rarr; sweep)</button></div>
  <div class="nota">~15 min por tanda con todas las categorias (reps=1); cada tanda
   guarda su juego de coefficients en loops/campaigns/</div></div>
 
@@ -291,6 +300,7 @@ async function lanzar(req){{
 }}
 function m1(){{lanzar({{accion:'m1',cats:sel('m1cat'),repeats:+$('m1rep').value,
  campaigns:+$('m1n').value,nobuild:$('m1nb').checked}})}}
+function m1full(){{lanzar({{accion:'m1full',cats:sel('m1cat'),kb:$('fkb').value,lcref:+$('flc').value}})}}
 function m2(){{lanzar({{accion:'m2',progs:sel('m2prog'),
  campaigns:+$('m2n').value,nobuild:$('m2nb').checked}})}}
 function verify(){{lanzar({{accion:'verify',
