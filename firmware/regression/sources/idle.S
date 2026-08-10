@@ -7,7 +7,7 @@
 #ifndef IDLE_REPS
 #define IDLE_REPS  1       // 1000 x 0.3 s ~ 5 min (como m1)
 #endif
-#define IDLE_TICKS 40000000
+#define IDLE_TICKS 400000000
 
 .section .text.start
 .globl _start

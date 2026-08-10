@@ -6,7 +6,7 @@
 #ifndef IDLE_REPS
 #define IDLE_REPS  1
 #endif
-#define IDLE_TICKS 40000000
+#define IDLE_TICKS 400000000
 
 .section .text.start
 .globl _start
