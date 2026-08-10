@@ -124,13 +124,25 @@ def main():
               f"{p['cic_ctrl']:8.2f} {p['dP_mW']:7.1f} {p['ctrl_pct']:5.1f}")
 
     # ajuste e_ctrl vs (n_fetch/n_ctrl)
-    xs = [p["rng"] for p in pts]
-    ys = [p["coef_nJ"] for p in pts]
-    a, b, r2 = ajuste(xs, ys)
-    print("\n--- ajuste  e_ctrl = e_flush + e_fetch * (n_fetch/n_ctrl) ---")
-    print(f"  e_flush (intercepto) = {a:.3f} nJ/ctrl   (ctrl sin fetch)")
-    print(f"  e_fetch (pendiente)  = {b*1e3:.4f} pJ por byte de footprint")
-    print(f"  R^2 = {r2:.4f}   {'(lineal OK)' if r2 > 0.9 else '(pobre -> mover FETCH_BLK_LSB y re-sintetizar)'}")
+    rng = [p["rng"] for p in pts]
+    a, _, r2c = ajuste(rng, [p["coef_nJ"] for p in pts])
+    off, e_fetch, r2f = ajuste(rng, [p["dP_mW"] / 1e3 for p in pts])
+    print("\n--- Tiwari decomposition (ctrl = flush + fetch) ---")
+    print(f"  e_flush (ctrl base) = {a:.3f} nJ/instr        R2={r2c:.3f}")
+    print(f"  e_fetch             = {e_fetch*1e9:.3f} nW/byte   R2={r2f:.3f}")
+    coef_csv = os.path.join(HERE, "loops", "coefficients.csv")
+    if os.path.exists(coef_csv):
+        lines = list(csv.reader(open(coef_csv)))
+        def setrow(name, val, unit):
+            for r in lines:
+                if r and r[0] == name:
+                    r[1] = f"{val:.6e}"; r[2] = unit; return
+            lines.append([name, f"{val:.6e}", unit])
+        setrow("ctrl", a * 1e-9, "J/instr")
+        setrow("fetch", e_fetch, "W/byte")
+        with open(coef_csv, "w", newline="") as f:
+            csv.writer(f).writerows(lines)
+        print(f"  -> wrote to {os.path.relpath(coef_csv, HERE)}: ctrl={a:.3f} nJ + fetch={e_fetch*1e9:.3f} nW/byte")
 
     out = os.path.join(HERE, "sweep_fetch.csv")
     with open(out, "w", newline="") as f:
