@@ -101,6 +101,9 @@ def main():
     if not os.path.exists(CHARACTERIZE):
         sys.exit(f"no encuentro {CHARACTERIZE}")
 
+    # asegura idle.elf al dia (el barrido corre caracterizar con --no-build)
+    subprocess.run(["make", "-B", "../elf/idle.elf"], cwd=FUENTES, check=True)
+
     pts = []
     for kb in kbs:
         lc = max(500, round(args.lc_ref * 16 / kb))
