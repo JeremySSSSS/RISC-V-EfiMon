@@ -143,6 +143,13 @@ def cmd_de(req):
         n = min(max(int(req.get("campaigns", 1)), 1), 10)
         suf = f" x{n} tandas" if n > 1 else ""
         return (f"Validar ambos metodos ({len(progs)} prog){suf}", [cmd] * n)
+    if a == "sweep":
+        kbs = [x for x in req.get("kb", "").replace(" ", "").split(",") if x.isdigit()]
+        if not kbs:
+            raise ValueError("invalid footprints (e.g. 4,8,16,32,64,128,256)")
+        lcref = min(max(int(req.get("lcref", 20000)), 500), 2000000)
+        cmd = PY + ["sweep_fetch.py", "--kb", ",".join(kbs), "--lc-ref", str(lcref)]
+        return (f"Fetch sweep ({len(kbs)} points)", [cmd])
     raise ValueError(f"accion desconocida: {a}")
 
 
@@ -257,6 +264,14 @@ def pagina():
  <div class="nota">cada tanda corre los dos metodos sobre la MISMA medida (una sola
   linea base, medida en sitio) y guarda validations/validation_{{loops,regression}}_*.csv</div></div>
 
+<div class="card"><h2>Fetch sweep (calibrate e_fetch)</h2>
+ <div class="fila">footprints KB <input type="text" id="fkb" value="4,8,16,24,32,48,64,96,128,192,256" style="width:230px"></div>
+ <div class="fila">LOOP_COUNT ref <input type="number" id="flc" value="20000" min="500" style="width:80px">
+  <button onclick="sweep()">Sweep footprint</button></div>
+ <div class="nota">builds ctrl at each footprint, measures, reads n_fetch from the HW counter and fits
+  e_ctrl = e_flush + e_fetch&middot;(n_fetch/n_ctrl). Needs the bitstream with n_fetch.
+  Result + R&sup2; in the console and in sweep_fetch.csv</div></div>
+
 <div class="card"><h2>Estado</h2><div id="estado">cargando...</div></div>
 
 </div><div>
@@ -280,6 +295,7 @@ function m2(){{lanzar({{accion:'m2',progs:sel('m2prog'),
  campaigns:+$('m2n').value,nobuild:$('m2nb').checked}})}}
 function verify(){{lanzar({{accion:'verify',
  progs:sel('vprog'),campaigns:+$('vn').value}})}}
+function sweep(){{lanzar({{accion:'sweep',kb:$('fkb').value,lcref:+$('flc').value}})}}
 async function detener(){{await fetch('/stop',{{method:'POST'}})}}
 async function sondear(){{
  const j=await (await fetch('/log?desde='+n)).json();
