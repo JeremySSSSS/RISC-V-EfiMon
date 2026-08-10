@@ -10,7 +10,7 @@ WLO = {
     "alu": 0, "mul": 2, "mulh": 4, "div_n": 6, "mem": 8, "ctrl": 10,
     "fp_add": 12, "fp_mul": 14, "fp_fma": 16, "fp_div": 18,
     "fp_sqrt": 20, "fp_noncomp": 22, "fp_conv": 24, "divcyc": 26,
-    "fetch": 30,   # n_fetch va DESPUES de mcycle (w28/w29) -> w30/w31
+    "fetch": 30,   # w30=fetch_min, w31=fetch_max (rango=max-min)   # w30=fetch_min, w31=fetch_max -> rango = max-min (footprint)
 }
 INSTR = ["alu", "mul", "mulh", "mem", "ctrl", "fp_add", "fp_mul",
          "fp_fma", "fp_div", "fp_sqrt", "fp_noncomp", "fp_conv"]
@@ -111,7 +111,7 @@ def contadores(w):
         "n_fp_sqrt": val(w, WLO["fp_sqrt"]),
         "n_fp_noncomp": val(w, WLO["fp_noncomp"]),
         "n_fp_conv": val(w, WLO["fp_conv"]),
-        "n_fetch": val(w, WLO["fetch"]),      # cruces de bloque de fetch a L2
+        "n_fetch": (w[31] - w[30]) if w[31] >= w[30] else 0,  # rango fetch = max-min (footprint)
         "mcycle":  (w[29] - w[28]) & MASK32,
     }
 

@@ -65,7 +65,7 @@ def ultimo_punto():
     ntot = sum(int(r[k]) for k in CATS)
     return {
         "coef_nJ": (Pc - Pi) * T / nc * 1e9,     # e_ctrl medido [nJ/ctrl]
-        "nf_nc":   nf / nc,                        # cruces de fetch por ctrl
+        "rng":     nf,                             # rango fetch = footprint [bytes]
         "cic_ctrl": mc / nc,
         "dP_mW":   (Pc - Pi) * 1e3,
         "ctrl_pct": 100 * nc / ntot,
@@ -113,32 +113,32 @@ def main():
         p = ultimo_punto()
         p["kb"] = kb
         pts.append(p)
-        print(f"  -> coef={p['coef_nJ']:.2f} nJ  n_fetch/n_ctrl={p['nf_nc']:.4f}  "
+        print(f"  -> coef={p['coef_nJ']:.2f} nJ  rango={p['rng']}  "
               f"cic/ctrl={p['cic_ctrl']:.2f}  ctrl%={p['ctrl_pct']:.1f}")
 
     # tabla
     print("\n" + "=" * 64)
-    print(f"{'KB':>4} {'coef[nJ]':>9} {'nf/nc':>8} {'cic/ctrl':>8} {'dP[mW]':>7} {'ctrl%':>6}")
+    print(f"{'KB':>4} {'coef[nJ]':>9} {'rango':>9} {'cic/ctrl':>8} {'dP[mW]':>7} {'ctrl%':>6}")
     for p in pts:
-        print(f"{p['kb']:>4} {p['coef_nJ']:9.2f} {p['nf_nc']:8.4f} "
+        print(f"{p['kb']:>4} {p['coef_nJ']:9.2f} {p['rng']:9d} "
               f"{p['cic_ctrl']:8.2f} {p['dP_mW']:7.1f} {p['ctrl_pct']:5.1f}")
 
     # ajuste e_ctrl vs (n_fetch/n_ctrl)
-    xs = [p["nf_nc"] for p in pts]
+    xs = [p["rng"] for p in pts]
     ys = [p["coef_nJ"] for p in pts]
     a, b, r2 = ajuste(xs, ys)
     print("\n--- ajuste  e_ctrl = e_flush + e_fetch * (n_fetch/n_ctrl) ---")
     print(f"  e_flush (intercepto) = {a:.3f} nJ/ctrl   (ctrl sin fetch)")
-    print(f"  e_fetch (pendiente)  = {b:.3f} nJ por cruce de fetch")
+    print(f"  e_fetch (pendiente)  = {b*1e3:.4f} pJ por byte de footprint")
     print(f"  R^2 = {r2:.4f}   {'(lineal OK)' if r2 > 0.9 else '(pobre -> mover FETCH_BLK_LSB y re-sintetizar)'}")
 
     out = os.path.join(HERE, "sweep_fetch.csv")
     with open(out, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["kb", "coef_nJ", "n_fetch_over_n_ctrl", "cic_ctrl",
+        w.writerow(["kb", "coef_nJ", "rango_bytes", "cic_ctrl",
                     "dP_mW", "ctrl_pct", "T_s", "n_fetch", "n_ctrl"])
         for p in pts:
-            w.writerow([p["kb"], f"{p['coef_nJ']:.4f}", f"{p['nf_nc']:.6f}",
+            w.writerow([p["kb"], f"{p['coef_nJ']:.4f}", str(p["rng"]),
                         f"{p['cic_ctrl']:.3f}", f"{p['dP_mW']:.2f}",
                         f"{p['ctrl_pct']:.2f}", f"{p['T_s']:.3f}",
                         p["n_fetch"], p["n_ctrl"]])
