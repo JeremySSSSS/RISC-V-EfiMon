@@ -342,13 +342,16 @@ def ajustar_efimon(cal_rows, idle_rows):
     rows = cal_rows + idle_rows
     R = np.array([[r[3][REGR[c]] / r[2] if r[2] > 0 else 0.0 for c in DYN]
                   for r in rows])
+    fcol = np.array([[r[3]["n_fetch"] * r[3]["mcycle"] / (r[2] * F_CLK)
+                      if r[2] > 0 else 0.0] for r in rows])
     y = np.array([r[1] for r in rows])
-    X = np.hstack([np.ones((len(y), 1)), R])
+    X = np.hstack([np.ones((len(y), 1)), R, fcol])
     sd = X.std(0); sd[0] = 1.0; sd[sd == 0] = 1.0
     e, _ = nnls(X / sd, y)
     e = e / sd
     P_static = e[0]
-    coefs = dict(zip(DYN, e[1:]))
+    coefs = dict(zip(DYN, e[1:1 + len(DYN)]))
+    coefs["fetch"] = e[1 + len(DYN)]
     pred = X @ e
     resid = y - pred
     ss_res = float(resid @ resid)
@@ -554,6 +557,8 @@ def cmd_regresion(args):
             wc.writerow([c, f"{coefs[c]:.6e}", unidad])
         if "div_n" in coefs:
             wc.writerow(["div_n", f"{coefs['div_n']:.6e}", "J/instr"])
+        if "fetch" in coefs:
+            wc.writerow(["fetch", f"{coefs['fetch']:.6e}", "W/byte"])
 
     print(f"{len(cal_rows)} corridas de calibracion"
           + (f" + {len(idle_rows)} idle" if args.model == "efimon" and idle_rows else "")
@@ -569,6 +574,10 @@ def cmd_regresion(args):
         sop = sum(1 for r in base if r[3][REGR[c]] > 0)
         flag = "   <-- NEGATIVO (soporte debil / anti-correlacion)" if coefs[c] < 0 else ""
         print(f"{c:10s} {coefs[c]*1e9:9.3f}  {unidad:9s} {sop:2d}/{len(base)} programas{flag}")
+    if "fetch" in coefs:
+        rngs = [r[3]["n_fetch"] for r in base if r[3].get("n_fetch", 0) > 0]
+        span = f"{min(rngs)}..{max(rngs)} B" if rngs else "-"
+        print(f"{'fetch':10s} {coefs['fetch']*1e9:9.3f}  nW/byte   footprint {span}")
 
     print("\nresiduos del ajuste (medido - ajustado), peores primero:")
     print(f"{'programa':16s} {'med[W]':>8s} {'fit[W]':>8s} {'resid[mW]':>10s} {'resid[%]':>9s}")

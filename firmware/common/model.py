@@ -84,7 +84,10 @@ def potencia_dinamica(w, coef):
     E = sum(coef.get(c, 0.0) * val(w, WLO[c]) for c in INSTR)   # per instruction
     E += coef.get("div", 0.0) * val(w, WLO["divcyc"])           # div per cycle
     E += coef.get("div_n", 0.0) * val(w, WLO["div_n"])          # div: base cost per instr (differential model)
-    return E / (T_cyc / F_CLK)
+    P = E / (T_cyc / F_CLK)
+    rng = (w[31] - w[30]) if w[31] >= w[30] else 0              # fetch range = footprint [bytes]
+    P += coef.get("fetch", 0.0) * rng                          # fetch power (Tiwari) ~ footprint
+    return P
 
 
 def predecir(w, P_idle, coef):
