@@ -1,10 +1,10 @@
-// M1 - linea base IDLE WFI. ~20 s a 10 MHz (67 x 0.3 s).
+// M1 - linea base IDLE WFI. ~60 s (2400 x 0.025 s medidos en banco).
 // Abre una sola ventana GPIO y duerme el core con wfi despertado por FC timer.
 // Da P_idle pasivo para restar a los loops homogeneos.
 #include "platform.inc"
 
 #ifndef IDLE_REPS
-#define IDLE_REPS  40
+#define IDLE_REPS  2400
 #endif
 #define IDLE_TICKS 3000000
 
