@@ -20,7 +20,7 @@ _start:
     csrci 0x320, 1                  // habilita mcycle
 
     reset_category_counters
-    li s0, 37000                   // LOOP_COUNT
+    li s0, 22200                   // LOOP_COUNT
 
     gpio_high
 

@@ -4,7 +4,7 @@
 #include "platform.inc"
 
 #ifndef IDLE_REPS
-#define IDLE_REPS  67
+#define IDLE_REPS  40
 #endif
 #define IDLE_TICKS 3000000
 

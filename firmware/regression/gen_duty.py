@@ -19,8 +19,8 @@ import jtag  # noqa: E402
 FUENTES = os.path.join(HERE, "sources")
 MK = os.path.join(FUENTES, "duty_variants.mk")
 CHUNKS = 10
-ACT_D60 = 1.2e7      # ACTIVE cycles per batch at d60 (12 s total at 10 MHz)
-ACT_D30 = 0.6e7      # active cycles per batch at d30 (6 s total)
+ACT_D60 = 7.2e6      # ACTIVE cycles per batch at d60 (7.2 s -> ventana ~12 s)
+ACT_D30 = 3.6e6      # active cycles per batch at d30 (3.6 s -> ~12 s)
 
 
 def regla_base(prog):

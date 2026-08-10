@@ -5,92 +5,92 @@ DUTY_ELFS := $(OUT)/crc_d60.elf $(OUT)/crc_d30.elf $(OUT)/dotprod_d60.elf $(OUT)
 
 
 $(OUT)/crc_d60.elf: harness.S wl_crc.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=976 -DCHUNKS=10 -DSLEEP_TICKS=8000597 -o $@ harness.S wl_crc.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=586 -DCHUNKS=10 -DSLEEP_TICKS=4800358 -o $@ harness.S wl_crc.c
 
 $(OUT)/crc_d30.elf: harness.S wl_crc.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=488 -DCHUNKS=10 -DSLEEP_TICKS=14001046 -o $@ harness.S wl_crc.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=293 -DCHUNKS=10 -DSLEEP_TICKS=8400628 -o $@ harness.S wl_crc.c
 
 $(OUT)/dotprod_d60.elf: harness.S wl_dotprod.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=6015 -DCHUNKS=10 -DSLEEP_TICKS=7999952 -o $@ harness.S wl_dotprod.c
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=3609 -DCHUNKS=10 -DSLEEP_TICKS=4799971 -o $@ harness.S wl_dotprod.c
 
 $(OUT)/dotprod_d30.elf: harness.S wl_dotprod.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=3008 -DCHUNKS=10 -DSLEEP_TICKS=14002244 -o $@ harness.S wl_dotprod.c
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=1805 -DCHUNKS=10 -DSLEEP_TICKS=8401346 -o $@ harness.S wl_dotprod.c
 
 $(OUT)/fpoly_d60.elf: harness.S wl_fpoly.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=6438 -DCHUNKS=10 -DSLEEP_TICKS=8000288 -o $@ harness.S wl_fpoly.c
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=3863 -DCHUNKS=10 -DSLEEP_TICKS=4800173 -o $@ harness.S wl_fpoly.c
 
 $(OUT)/fpoly_d30.elf: harness.S wl_fpoly.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=3219 -DCHUNKS=10 -DSLEEP_TICKS=14000505 -o $@ harness.S wl_fpoly.c
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=1931 -DCHUNKS=10 -DSLEEP_TICKS=8400303 -o $@ harness.S wl_fpoly.c
 
 $(OUT)/fsm_d60.elf: harness.S wl_fsm.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1509 -DCHUNKS=10 -DSLEEP_TICKS=8000756 -o $@ harness.S wl_fsm.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=905 -DCHUNKS=10 -DSLEEP_TICKS=4800454 -o $@ harness.S wl_fsm.c
 
 $(OUT)/fsm_d30.elf: harness.S wl_fsm.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=754 -DCHUNKS=10 -DSLEEP_TICKS=13992044 -o $@ harness.S wl_fsm.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=452 -DCHUNKS=10 -DSLEEP_TICKS=8395226 -o $@ harness.S wl_fsm.c
 
 $(OUT)/gcd_d60.elf: harness.S wl_gcd.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=696 -DCHUNKS=10 -DSLEEP_TICKS=8001531 -o $@ harness.S wl_gcd.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=418 -DCHUNKS=10 -DSLEEP_TICKS=4800919 -o $@ harness.S wl_gcd.c
 
 $(OUT)/gcd_d30.elf: harness.S wl_gcd.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=348 -DCHUNKS=10 -DSLEEP_TICKS=14002679 -o $@ harness.S wl_gcd.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=209 -DCHUNKS=10 -DSLEEP_TICKS=8401607 -o $@ harness.S wl_gcd.c
 
 $(OUT)/histogram_d60.elf: harness.S wl_histogram.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1548 -DCHUNKS=10 -DSLEEP_TICKS=7999032 -o $@ harness.S wl_histogram.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=929 -DCHUNKS=10 -DSLEEP_TICKS=4799419 -o $@ harness.S wl_histogram.c
 
 $(OUT)/histogram_d30.elf: harness.S wl_histogram.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=774 -DCHUNKS=10 -DSLEEP_TICKS=13998306 -o $@ harness.S wl_histogram.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=464 -DCHUNKS=10 -DSLEEP_TICKS=8398984 -o $@ harness.S wl_histogram.c
 
 $(OUT)/matmul_d60.elf: harness.S wl_matmul.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=404 -DCHUNKS=10 -DSLEEP_TICKS=8009166 -o $@ harness.S wl_matmul.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=242 -DCHUNKS=10 -DSLEEP_TICKS=4805500 -o $@ harness.S wl_matmul.c
 
 $(OUT)/matmul_d30.elf: harness.S wl_matmul.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=202 -DCHUNKS=10 -DSLEEP_TICKS=14016042 -o $@ harness.S wl_matmul.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=121 -DCHUNKS=10 -DSLEEP_TICKS=8409625 -o $@ harness.S wl_matmul.c
 
 $(OUT)/memcpy_d60.elf: harness.S wl_memcpy.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=2795 -DCHUNKS=10 -DSLEEP_TICKS=8001153 -o $@ harness.S wl_memcpy.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1677 -DCHUNKS=10 -DSLEEP_TICKS=4800692 -o $@ harness.S wl_memcpy.c
 
 $(OUT)/memcpy_d30.elf: harness.S wl_memcpy.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1397 -DCHUNKS=10 -DSLEEP_TICKS=13997009 -o $@ harness.S wl_memcpy.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=838 -DCHUNKS=10 -DSLEEP_TICKS=8398205 -o $@ harness.S wl_memcpy.c
 
 $(OUT)/modpow_d60.elf: harness.S wl_modpow.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=2195 -DCHUNKS=10 -DSLEEP_TICKS=8001019 -o $@ harness.S wl_modpow.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1317 -DCHUNKS=10 -DSLEEP_TICKS=4800611 -o $@ harness.S wl_modpow.c
 
 $(OUT)/modpow_d30.elf: harness.S wl_modpow.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1097 -DCHUNKS=10 -DSLEEP_TICKS=13995405 -o $@ harness.S wl_modpow.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=658 -DCHUNKS=10 -DSLEEP_TICKS=8397243 -o $@ harness.S wl_modpow.c
 
 $(OUT)/mulhash64_d60.elf: harness.S wl_mulhash64.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=5639 -DCHUNKS=10 -DSLEEP_TICKS=7999863 -o $@ harness.S wl_mulhash64.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=3383 -DCHUNKS=10 -DSLEEP_TICKS=4799918 -o $@ harness.S wl_mulhash64.c
 
 $(OUT)/mulhash64_d30.elf: harness.S wl_mulhash64.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=2820 -DCHUNKS=10 -DSLEEP_TICKS=14002243 -o $@ harness.S wl_mulhash64.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1692 -DCHUNKS=10 -DSLEEP_TICKS=8401346 -o $@ harness.S wl_mulhash64.c
 
 $(OUT)/mulhscale_d60.elf: harness.S wl_mulhscale.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=16086 -DCHUNKS=10 -DSLEEP_TICKS=8000106 -o $@ harness.S wl_mulhscale.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=9652 -DCHUNKS=10 -DSLEEP_TICKS=4800064 -o $@ harness.S wl_mulhscale.c
 
 $(OUT)/mulhscale_d30.elf: harness.S wl_mulhscale.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=8043 -DCHUNKS=10 -DSLEEP_TICKS=14000186 -o $@ harness.S wl_mulhscale.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=4826 -DCHUNKS=10 -DSLEEP_TICKS=8400112 -o $@ harness.S wl_mulhscale.c
 
 $(OUT)/radix_d60.elf: harness.S wl_radix.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1712 -DCHUNKS=10 -DSLEEP_TICKS=8001888 -o $@ harness.S wl_radix.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1027 -DCHUNKS=10 -DSLEEP_TICKS=4801133 -o $@ harness.S wl_radix.c
 
 $(OUT)/radix_d30.elf: harness.S wl_radix.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=856 -DCHUNKS=10 -DSLEEP_TICKS=14003305 -o $@ harness.S wl_radix.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=514 -DCHUNKS=10 -DSLEEP_TICKS=8401983 -o $@ harness.S wl_radix.c
 
 $(OUT)/sort_d60.elf: harness.S wl_sort.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1569 -DCHUNKS=10 -DSLEEP_TICKS=7998601 -o $@ harness.S wl_sort.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=941 -DCHUNKS=10 -DSLEEP_TICKS=4799161 -o $@ harness.S wl_sort.c
 
 $(OUT)/sort_d30.elf: harness.S wl_sort.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=785 -DCHUNKS=10 -DSLEEP_TICKS=14006473 -o $@ harness.S wl_sort.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=471 -DCHUNKS=10 -DSLEEP_TICKS=8403884 -o $@ harness.S wl_sort.c
 
 $(OUT)/trialdiv_d60.elf: harness.S wl_trialdiv.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1820 -DCHUNKS=10 -DSLEEP_TICKS=7998223 -o $@ harness.S wl_trialdiv.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1092 -DCHUNKS=10 -DSLEEP_TICKS=4798934 -o $@ harness.S wl_trialdiv.c
 
 $(OUT)/trialdiv_d30.elf: harness.S wl_trialdiv.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=910 -DCHUNKS=10 -DSLEEP_TICKS=13996890 -o $@ harness.S wl_trialdiv.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=546 -DCHUNKS=10 -DSLEEP_TICKS=8398134 -o $@ harness.S wl_trialdiv.c
 
 $(OUT)/vecscale_d60.elf: harness.S wl_vecscale.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=7772 -DCHUNKS=10 -DSLEEP_TICKS=7999979 -o $@ harness.S wl_vecscale.c
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=4663 -DCHUNKS=10 -DSLEEP_TICKS=4799987 -o $@ harness.S wl_vecscale.c
 
 $(OUT)/vecscale_d30.elf: harness.S wl_vecscale.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=3886 -DCHUNKS=10 -DSLEEP_TICKS=13999963 -o $@ harness.S wl_vecscale.c
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=2332 -DCHUNKS=10 -DSLEEP_TICKS=8399978 -o $@ harness.S wl_vecscale.c
 
