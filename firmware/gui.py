@@ -143,6 +143,9 @@ def cmd_de(req):
         n = min(max(int(req.get("campaigns", 1)), 1), 10)
         suf = f" x{n} tandas" if n > 1 else ""
         return (f"Validar ambos metodos ({len(progs)} prog){suf}", [cmd] * n)
+    if a == "promediar":
+        n = min(max(int(req.get("n", 3)), 2), 20)
+        return (f"Average {n} campaigns", [PY + ["average_campaigns.py", "--n", str(n)]])
     if a == "m1full":
         cats = [c for c in req.get("cats", []) if c in CATS] or CATS
         m1 = PY + ["characterize.py", "loops"] + cats
@@ -248,6 +251,9 @@ def pagina():
   <label class="chip"><input type="checkbox" id="m1nb">no recompilar</label>
   <button onclick="m1()">Caracterizar M1</button>
   <button onclick="m1full()" style="background:#1f7a4d">M1 + Fetch (loops &rarr; sweep)</button></div>
+ <div class="fila">average <input type="number" id="prn" value="3" min="2" max="20" style="width:52px"> campaigns
+  <button onclick="promediar()" style="background:#3a4a5c">Average</button>
+  <span class="nota">(averages the last N in campaigns/ -> coefficients.csv)</span></div>
  <div class="nota">~15 min por tanda con todas las categorias (reps=1); cada tanda
   guarda su juego de coefficients en loops/campaigns/</div></div>
 
@@ -301,6 +307,7 @@ async function lanzar(req){{
 function m1(){{lanzar({{accion:'m1',cats:sel('m1cat'),repeats:+$('m1rep').value,
  campaigns:+$('m1n').value,nobuild:$('m1nb').checked}})}}
 function m1full(){{lanzar({{accion:'m1full',cats:sel('m1cat'),kb:$('fkb').value,lcref:+$('flc').value}})}}
+function promediar(){{lanzar({{accion:'promediar',n:+$('prn').value}})}}
 function m2(){{lanzar({{accion:'m2',progs:sel('m2prog'),
  campaigns:+$('m2n').value,nobuild:$('m2nb').checked}})}}
 function verify(){{lanzar({{accion:'verify',
