@@ -17,7 +17,7 @@ _start:
     csrci 0x320, 1
     reset_category_counters
 
-    li s0, 36000000  // LOOP_COUNT (~40 s)
+    li s0, 20000000  // LOOP_COUNT (~40 s)
     li t0, 0x6000
     csrs mstatus, t0
     la t0, fp_words
