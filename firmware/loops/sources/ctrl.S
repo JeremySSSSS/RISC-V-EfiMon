@@ -21,7 +21,7 @@
 #define FOOTPRINT_KB 16                 // ~2-4x la i-cache del FC (barrer en banco)
 #endif
 #ifndef LOOP_COUNT
-#define LOOP_COUNT 20000                // tune ~40 s en banco (depende del footprint)
+#define LOOP_COUNT 76000                // tune ~40 s en banco (depende del footprint)
 #endif
 #define GROUPS_PER_BLOCK 24
 #define BLOCK_BYTES (20 + GROUPS_PER_BLOCK*44)   // 4 updates + jal + 24 grupos (11 instr)
