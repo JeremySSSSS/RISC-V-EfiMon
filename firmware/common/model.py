@@ -10,6 +10,7 @@ WLO = {
     "alu": 0, "mul": 2, "mulh": 4, "div_n": 6, "mem": 8, "ctrl": 10,
     "fp_add": 12, "fp_mul": 14, "fp_fma": 16, "fp_div": 18,
     "fp_sqrt": 20, "fp_noncomp": 22, "fp_conv": 24, "divcyc": 26,
+    "fetch": 30,   # n_fetch va DESPUES de mcycle (w28/w29) -> w30/w31
 }
 INSTR = ["alu", "mul", "mulh", "mem", "ctrl", "fp_add", "fp_mul",
          "fp_fma", "fp_div", "fp_sqrt", "fp_noncomp", "fp_conv"]
@@ -110,6 +111,7 @@ def contadores(w):
         "n_fp_sqrt": val(w, WLO["fp_sqrt"]),
         "n_fp_noncomp": val(w, WLO["fp_noncomp"]),
         "n_fp_conv": val(w, WLO["fp_conv"]),
+        "n_fetch": val(w, WLO["fetch"]),      # cruces de bloque de fetch a L2
         "mcycle":  (w[29] - w[28]) & MASK32,
     }
 
@@ -118,4 +120,4 @@ def contadores(w):
 COLS_CONTADORES = ["n_alu", "n_mul", "n_mulh", "n_div", "c_div",
                    "n_mem", "n_ctrl", "n_fp_add", "n_fp_mul", "n_fp_fma",
                    "n_fp_div", "n_fp_sqrt", "n_fp_noncomp", "n_fp_conv",
-                   "mcycle"]
+                   "n_fetch", "mcycle"]

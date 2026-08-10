@@ -22,7 +22,7 @@ target remote :3333
 monitor reset halt
 load
 continue
-x/30xw &results
+x/32xw &results
 set {unsigned int}0x1A10100C = 0
 set {unsigned int}0x1A101080 = {unsigned int}0x1A101080 | 0x7ff80000
 printf "TEMPCODE %u\\n", ({unsigned int}0x1A101100 >> 19) & 0xfff

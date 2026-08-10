@@ -313,6 +313,8 @@ package cv32e40p_pkg;
     CSR_CAT_FP_CONV_HI    = 12'hBD9,
     CSR_CAT_DIVCYC_LO     = 12'hBDA,
     CSR_CAT_DIVCYC_HI     = 12'hBDB,
+    CSR_CAT_FETCH_LO      = 12'hBDC,
+    CSR_CAT_FETCH_HI      = 12'hBDD,
 
     ///////////////////////////////////////////////////////
     // Machine CSRs
@@ -539,7 +541,7 @@ package cv32e40p_pkg;
     CSR_MHARTID   = 12'hF14
   } csr_num_e;
 
-  localparam int unsigned CATEGORY_COUNT = 14;
+  localparam int unsigned CATEGORY_COUNT = 15;
 
   typedef enum logic [3:0] {
     CAT_ALU = 4'd0,
@@ -555,7 +557,8 @@ package cv32e40p_pkg;
     CAT_FP_SQRT = 4'd10,
     CAT_FP_NONCOMP = 4'd11,
     CAT_FP_CONV = 4'd12,
-    CAT_DIVCYC = 4'd13
+    CAT_DIVCYC = 4'd13,
+    CAT_FETCH = 4'd14
   } category_idx_e;
 
   // CSR operations

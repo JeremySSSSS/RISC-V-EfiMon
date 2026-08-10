@@ -1068,6 +1068,8 @@ module cv32e40p_core
       .rst_ni         (rst_ni),
       .inc_i          (cat_inc),
       .divcyc_inc_i   (cat_divcyc_inc),
+      .fetch_valid_i  (instr_req_o & instr_gnt_i),  // fetch a L2 aceptado
+      .fetch_addr_i   (instr_addr_o),               // direccion del fetch
       .csr_addr_i     (csr_addr),
       .csr_op_i       (csr_op),
       .csr_wdata_i    (csr_wdata),

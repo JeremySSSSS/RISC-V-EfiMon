@@ -61,6 +61,8 @@
 .equ CSR_CAT_FP_CONV_HI,    0xBD9
 .equ CSR_CAT_DIVCYC_LO,     0xBDA
 .equ CSR_CAT_DIVCYC_HI,     0xBDB
+.equ CSR_CAT_FETCH_LO,   0xBDC
+.equ CSR_CAT_FETCH_HI,   0xBDD
 
 .macro gpio_init
     li t0, PAD_IO08_MUX
@@ -145,6 +147,8 @@
     csrw CSR_CAT_FP_CONV_HI, zero
     csrw CSR_CAT_DIVCYC_LO, zero
     csrw CSR_CAT_DIVCYC_HI, zero
+    csrw CSR_CAT_FETCH_LO, zero
+    csrw CSR_CAT_FETCH_HI, zero
 .endm
 
 # Lee los 16 CSR en registros (sin stores entremedio, para no contaminar
@@ -182,4 +186,6 @@
     csrr t0, CSR_CAT_DIVCYC_HI;     sw t0, 108(s4)
     sw s1, 112(s4)
     sw s2, 116(s4)
+    csrr t0, CSR_CAT_FETCH_LO;      sw t0, 120(s4)
+    csrr t0, CSR_CAT_FETCH_HI;      sw t0, 124(s4)
 .endm

@@ -80,7 +80,7 @@ trap_handler:
 .align 8
 .globl results
 results:
-    .space 120
+    .space 128
 .align 4
 mcyc_ini:
     .space 4

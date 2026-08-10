@@ -113,4 +113,4 @@ trap_handler:
 .align 4
 .globl results
 results:
-    .space 120
+    .space 128
