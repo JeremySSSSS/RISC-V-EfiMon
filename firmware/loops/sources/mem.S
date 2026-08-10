@@ -25,7 +25,7 @@ _start:
 
     reset_category_counters
     la s2, data_words
-    li s0, 369600                 // LOOP_COUNT
+    li s0, 1227092                 // LOOP_COUNT
 
     gpio_high
 

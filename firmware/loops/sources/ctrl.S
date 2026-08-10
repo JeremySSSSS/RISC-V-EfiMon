@@ -27,7 +27,7 @@ _start:
     gpio_init
     csrci 0x320, 1                  // habilita mcycle
     reset_category_counters
-    li s0, 10800                    // LOOP_COUNT (tune ~20 s en banco)
+    li s0, 432000                    // LOOP_COUNT (tune ~20 s en banco)
 
     gpio_high
     li t0, 0x100

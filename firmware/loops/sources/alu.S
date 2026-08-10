@@ -20,7 +20,7 @@ _start:
     csrci 0x320, 1                  // habilita mcycle (mcountinhibit.CY = 0)
 
     reset_category_counters
-    li s0, 450000                 // LOOP_COUNT
+    li s0, 1538462                 // LOOP_COUNT
 
     gpio_high                       // abre la ventana medida
 
