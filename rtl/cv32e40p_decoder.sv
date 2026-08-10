@@ -2849,7 +2849,7 @@ module cv32e40p_decoder import cv32e40p_pkg::*; import cv32e40p_apu_core_pkg::*;
               end
 
             // Instruction-category counter access (13 instruction categories
-            // plus DIVCYC, 28 CSR words)
+            // plus DIVCYC and FETCH, 30 CSR words)
             CSR_CAT_ALU_LO,
               CSR_CAT_ALU_HI,
               CSR_CAT_MUL_LO,
@@ -2877,7 +2877,9 @@ module cv32e40p_decoder import cv32e40p_pkg::*; import cv32e40p_apu_core_pkg::*;
               CSR_CAT_FP_CONV_LO,
               CSR_CAT_FP_CONV_HI,
               CSR_CAT_DIVCYC_LO,
-              CSR_CAT_DIVCYC_HI :
+              CSR_CAT_DIVCYC_HI,
+              CSR_CAT_FETCH_LO,
+              CSR_CAT_FETCH_HI :
                 csr_status_o = 1'b1;
 
             // PMP register access
