@@ -305,7 +305,7 @@ def leer_datos(datos_csv):
     todas = []
     with open(datos_csv) as f:
         for r in csv.DictReader(f):
-            cont = {k: int(r[k]) for k in model.COLS_CONTADORES}
+            cont = {k: int(r.get(k, 0)) for k in model.COLS_CONTADORES}
             T = cont["mcycle"] / F_CLK
             # mismo ajuste de ventana que measure_one: mcycle se congela en wfi
             if r["programa"].endswith("_d60"):

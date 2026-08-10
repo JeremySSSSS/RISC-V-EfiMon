@@ -114,7 +114,7 @@ def run_one(elf):
             if _LINE.match(line):
                 _, rest = line.split(":", 1)
                 words.extend(_WORD.findall(rest))
-        if len(words) == 30:
+        if len(words) == 32:
             vals = [int(x, 16) for x in words]
             if vals[0] == 0xBAD00BAD:
                 raise RuntimeError(
@@ -124,7 +124,7 @@ def run_one(elf):
             mt = _TEMP.search(out)
             ultima_temp_cC = _temp_cC_de(int(mt.group(1))) if mt else None
             return words
-        print(f"    (attempt {intento}/{RETRIES}: {len(words)}/30 words, retrying...)")
+        print(f"    (attempt {intento}/{RETRIES}: {len(words)}/32 words, retrying...)")
         time.sleep(2)
     raise RuntimeError(f"{elf}: failed after {RETRIES} attempts.\n--- last GDB output ---\n{out}")
 

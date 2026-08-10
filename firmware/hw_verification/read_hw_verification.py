@@ -19,7 +19,7 @@ target remote :3333
 monitor reset halt
 load
 continue
-x/30xw &results
+x/32xw &results
 """
 
 LO = {
@@ -59,8 +59,8 @@ def run_gdb():
         if LINE.match(line):
             _, rest = line.split(":", 1)
             words.extend(int(x, 16) for x in WORD.findall(rest))
-    if len(words) != 30:
-        raise RuntimeError(f"expected 30 words but got {len(words)}\n{out}")
+    if len(words) != 32:
+        raise RuntimeError(f"expected 32 words but got {len(words)}\n{out}")
     return words
 
 
