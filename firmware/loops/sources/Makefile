@@ -24,5 +24,12 @@ $(OUT)/%.elf: %.S platform.inc link.ld | $(OUT)
 $(OUT):
 	mkdir -p $(OUT)
 
+
+# ctrl con footprint parametrizable (barrer en banco):
+#   make -B ../elf/ctrl.elf FOOTPRINT_KB=8 LOOP_COUNT=20000  (-B: forzar rebuild al barrer)
+FOOTPRINT_KB ?= 16
+$(OUT)/ctrl.elf: ctrl.S platform.inc link.ld | $(OUT)
+	$(CC) $(FLAGS) -march=rv32imc -DFOOTPRINT_KB=$(FOOTPRINT_KB)$(if $(LOOP_COUNT), -DLOOP_COUNT=$(LOOP_COUNT)) -o $@ ctrl.S
+
 clean:
 	rm -f $(ELFS)
