@@ -94,3 +94,42 @@ $(OUT)/vecscale_d60.elf: harness.S wl_vecscale.c platform.inc link.ld
 $(OUT)/vecscale_d30.elf: harness.S wl_vecscale.c platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=2332 -DCHUNKS=10 -DSLEEP_TICKS=8399978 -o $@ harness.S wl_vecscale.c
 
+
+# --- duty de los 6 kernels nuevos (calculado del smoke-test) ---
+DUTY_ELFS += $(OUT)/wmac_d60.elf $(OUT)/wmac_d30.elf $(OUT)/fir_d60.elf $(OUT)/fir_d30.elf $(OUT)/ratscale_d60.elf $(OUT)/ratscale_d30.elf $(OUT)/modmul_d60.elf $(OUT)/modmul_d30.elf $(OUT)/memfill_d60.elf $(OUT)/memfill_d30.elf $(OUT)/mulhstream_d60.elf $(OUT)/mulhstream_d30.elf
+
+$(OUT)/wmac_d60.elf: harness.S wl_wmac.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=2540 -DCHUNKS=10 -DSLEEP_TICKS=4800864 -o $@ harness.S wl_wmac.c
+
+$(OUT)/wmac_d30.elf: harness.S wl_wmac.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1270 -DCHUNKS=10 -DSLEEP_TICKS=8401512 -o $@ harness.S wl_wmac.c
+
+$(OUT)/fir_d60.elf: harness.S wl_fir.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1815 -DCHUNKS=10 -DSLEEP_TICKS=4799667 -o $@ harness.S wl_fir.c
+
+$(OUT)/fir_d30.elf: harness.S wl_fir.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=908 -DCHUNKS=10 -DSLEEP_TICKS=8404044 -o $@ harness.S wl_fir.c
+
+$(OUT)/ratscale_d60.elf: harness.S wl_ratscale.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=953 -DCHUNKS=10 -DSLEEP_TICKS=4800296 -o $@ harness.S wl_ratscale.c
+
+$(OUT)/ratscale_d30.elf: harness.S wl_ratscale.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=476 -DCHUNKS=10 -DSLEEP_TICKS=8391704 -o $@ harness.S wl_ratscale.c
+
+$(OUT)/modmul_d60.elf: harness.S wl_modmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1634 -DCHUNKS=10 -DSLEEP_TICKS=4801136 -o $@ harness.S wl_modmul.c
+
+$(OUT)/modmul_d30.elf: harness.S wl_modmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=817 -DCHUNKS=10 -DSLEEP_TICKS=8401988 -o $@ harness.S wl_modmul.c
+
+$(OUT)/memfill_d60.elf: harness.S wl_memfill.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=7627 -DCHUNKS=10 -DSLEEP_TICKS=4800069 -o $@ harness.S wl_memfill.c
+
+$(OUT)/memfill_d30.elf: harness.S wl_memfill.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=3813 -DCHUNKS=10 -DSLEEP_TICKS=8399019 -o $@ harness.S wl_memfill.c
+
+$(OUT)/mulhstream_d60.elf: harness.S wl_mulhstream.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=510 -DCHUNKS=10 -DSLEEP_TICKS=4800000 -o $@ harness.S wl_mulhstream.c
+
+$(OUT)/mulhstream_d30.elf: harness.S wl_mulhstream.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=255 -DCHUNKS=10 -DSLEEP_TICKS=8400000 -o $@ harness.S wl_mulhstream.c
