@@ -41,7 +41,7 @@ def build_idle_check():
         [f"{riscv}/bin/riscv32-unknown-elf-gcc",
          "-nostdlib", "-nostartfiles", "-static", "-Os", "-g", "-mabi=ilp32",
          "-Wl,-T,link.ld", "-Wl,--build-id=none", "-I.", "-march=rv32imc",
-         "-DIDLE_REPS=17", "-o", IDLE_CHECK_ELF, "idle.S"],
+         "-DIDLE_REPS=1", "-o", IDLE_CHECK_ELF, "idle.S"],
         cwd=os.path.join(HERE, "loops", "sources"), check=True)
 
 
@@ -63,17 +63,25 @@ def main():
     ap.add_argument("--repeats", type=int, default=1,
                     help="runs per load; P_med = average of the N windows "
                          "(lowers bench noise ~sqrt(N))")
+    ap.add_argument("--solo", default=None, choices=["loops", "regression"],
+                    help="run ONLY one method (e.g. loops if no M2 yet)")
     ap.add_argument("programas", nargs="+")
     args = ap.parse_args()
 
     # load BOTH coefficient sets; each file's own P_idle is ignored (a single
     # measured session baseline is used for both, so the measured power matches).
+    pedidos = [args.solo] if args.solo else list(METHODS)
     coefs = {}
-    for met in METHODS:
+    mets = []
+    for met in pedidos:
         cp = os.path.join(HERE, met, "coefficients.csv")
         if not os.path.exists(cp):
-            sys.exit(f"missing {cp} -> characterize method '{met}' first")
+            print(f"  (warn: no coef for '{met}' at {cp}; skipping)")
+            continue
         _, coefs[met] = model.cargar_coefficients(cp)
+        mets.append(met)
+    if not mets:
+        sys.exit("no coefficients for any requested method (run M1/M2 first)")
     print("=== Validation (both methods on the same runs) ===")
 
     header = (["fecha", "method", "programa", "T_s", "P_med_W", "P_pred_W",
@@ -89,7 +97,7 @@ def main():
     os.makedirs(d_tandas, exist_ok=True)
     ts0 = time.strftime("%Y%m%d_%H%M%S")
     batch = {}
-    for met in METHODS:
+    for met in mets:
         path = os.path.join(d_tandas, f"validation_{met}_measure_{ts0}.csv")
         fh = open(path, "w", newline="")
         w = csv.writer(fh)
@@ -101,7 +109,7 @@ def main():
     # single session baseline (used for both methods)
     if args.pidle == "measure":
         build_idle_check()
-        print("  measuring the session P_idle (idle_check, ~5 s)...")
+        print("  measuring the session P_idle (idle_check, ~40 s)...")
         for intento in range(1, 4):
             jtag.run_one(IDLE_CHECK_ELF)
             try:
@@ -118,7 +126,7 @@ def main():
 
     print(f"{'programa':12s} {'P_med[W]':>9s} | "
           f"{'loops[W]':>9s} {'err%':>7s} | {'regr[W]':>9s} {'err%':>7s}   T[s]")
-    errs = {m: [] for m in METHODS}
+    errs = {m: [] for m in mets}
     for prog in args.programas:
         elf = find_elf(prog)
         print(f"==> running {prog} over JTAG...")
@@ -141,7 +149,7 @@ def main():
         tstr = f"{tC/100:.2f}" if tC is not None else ""
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
         line = f"{prog:12s} {pbar:9.4f} |"
-        for met in METHODS:
+        for met in mets:
             P_din = model.potencia_dinamica(w, coefs[met])   # the model (dynamic)
             P_pred = P_idle + P_din                          # single session baseline
             err = 100 * (P_pred - pbar) / pbar
@@ -161,15 +169,15 @@ def main():
         print(line + f"  {T:5.1f}  {tstr}C")
 
     fcsv.close()
-    for met in METHODS:
+    for met in mets:
         batch[met][0].close()
     print()
-    for met in METHODS:
+    for met in mets:
         e = errs[met]
         if e:
             print(f"  {met:11s}: mean |err| {sum(e)/len(e):.2f}%   max {max(e):.2f}%")
     print(f"\nSaved to {VERIF_CSV} and the Sheet's 'verificacion' tab.")
-    for met in METHODS:
+    for met in mets:
         print(f"  {met}: {os.path.relpath(batch[met][2], HERE)}")
 
 
