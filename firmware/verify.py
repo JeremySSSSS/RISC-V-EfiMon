@@ -163,8 +163,8 @@ def main():
             batch[met][1].writerow(row)
             line += f" {P_pred:9.4f} {err:7.2f} |"
         fcsv.flush()
-        batch["loops"][0].flush()
-        batch["regression"][0].flush()
+        for met in mets:
+            batch[met][0].flush()
         print(line + f"  {T:5.1f}  {tstr}C")
 
     fcsv.close()
