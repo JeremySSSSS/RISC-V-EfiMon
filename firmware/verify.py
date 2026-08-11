@@ -33,8 +33,7 @@ VERIF_CSV = os.path.join(HERE, "verificacion.csv")
 
 
 def build_idle_check():
-    if os.path.exists(IDLE_CHECK_ELF):
-        return
+    # rebuild siempre: idle.S pudo cambiar (reps/ticks)
     riscv = os.environ.get("RISCV",
                            "/home/jjsotoch/pulp/toolchain/v1.0.16-pulp-riscv-gcc-ubuntu-18")
     subprocess.run(
