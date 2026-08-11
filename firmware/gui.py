@@ -136,7 +136,9 @@ def cmd_de(req):
         progs = [p for p in req.get("progs", []) if p in benchmarks()]
         if not progs:
             raise ValueError("elegi al menos un benchmark")
-        cmd = PY + ["verify.py"] + progs   # runs BOTH methods, measures baseline
+        cmd = PY + ["verify.py"] + progs
+        if req.get("solo") == "loops":
+            cmd += ["--solo", "loops"]   # runs BOTH methods, measures baseline
         # validation batches: N runs IN SEQUENCE with the same command; each batch
         # runs both methods and saves validations/validation_{loops,regression}_<ts>.csv,
         # useful directly for the cross-batch stability analysis.
@@ -270,7 +272,8 @@ def pagina():
 
 <div class="card"><h2>Validar (benchmarks &mdash; ambos metodos)</h2>
  <div class="fila">tandas <input type="number" id="vn" value="1" min="1" max="10" style="width:52px">
-  <span class="nota">cada tanda mide una vez y estima con loops Y regression</span></div>
+  <label class="chip"><input type="checkbox" id="vsolo">loops only (M1)</label>
+  <span class="nota">each batch measures once; estimates with whatever methods have coef</span></div>
  <div class="nota">kernels de validation held-out (BEEBS + gray float + modexp/bigdiv/ratapprox mulh/div):</div>
  <div>{chk(bm, "vprog")}</div>
  <div class="fila"><button onclick="verify()">Validar</button>
@@ -311,7 +314,7 @@ function promediar(){{lanzar({{accion:'promediar',n:+$('prn').value}})}}
 function m2(){{lanzar({{accion:'m2',progs:sel('m2prog'),
  campaigns:+$('m2n').value,nobuild:$('m2nb').checked}})}}
 function verify(){{lanzar({{accion:'verify',
- progs:sel('vprog'),campaigns:+$('vn').value}})}}
+ progs:sel('vprog'),campaigns:+$('vn').value,solo:$('vsolo').checked?'loops':null}})}}
 function sweep(){{lanzar({{accion:'sweep',kb:$('fkb').value,lcref:+$('flc').value}})}}
 async function detener(){{await fetch('/stop',{{method:'POST'}})}}
 async function sondear(){{
