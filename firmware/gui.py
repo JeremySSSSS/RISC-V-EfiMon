@@ -145,6 +145,9 @@ def cmd_de(req):
         n = min(max(int(req.get("campaigns", 1)), 1), 10)
         suf = f" x{n} tandas" if n > 1 else ""
         return (f"Validar ambos metodos ({len(progs)} prog){suf}", [cmd] * n)
+    if a == "testm2":
+        cmd = PY + ["test_m2.py"] + (["--duty"] if req.get("duty") else [])
+        return ("Test M2 (smoke)", [cmd])
     if a == "promediar":
         n = min(max(int(req.get("n", 3)), 2), 20)
         return (f"Average {n} campaigns", [PY + ["average_campaigns.py", "--n", str(n)]])
@@ -265,7 +268,9 @@ def pagina():
   <label class="chip"><input type="checkbox" id="m2nb">no recompilar</label></div>
  <details><summary style="font-size:12px;cursor:pointer;color:#9fb0c0">programas (20)</summary>
   <div>{chk(PROGS_M2, "m2prog")}</div></details>
- <div class="fila"><button onclick="m2()">Caracterizar M2</button></div>
+ <div class="fila"><button onclick="m2()">Caracterizar M2</button>
+  <button onclick="testm2()" style="background:#3a4a5c">Test M2 (smoke)</button>
+  <label class="chip"><input type="checkbox" id="tmduty">+duty</label></div>
  <div class="nota">efimon: 20 programas &times; 3 intensidades + idle &asymp; 30 min por tanda.
   Con tandas &gt; 1 se corren en secuencia; cada tanda guarda su juego de
   coefficients en regression/campaigns/</div></div>
@@ -311,6 +316,7 @@ function m1(){{lanzar({{accion:'m1',cats:sel('m1cat'),repeats:+$('m1rep').value,
  campaigns:+$('m1n').value,nobuild:$('m1nb').checked}})}}
 function m1full(){{lanzar({{accion:'m1full',cats:sel('m1cat'),kb:$('fkb').value,lcref:+$('flc').value}})}}
 function promediar(){{lanzar({{accion:'promediar',n:+$('prn').value}})}}
+function testm2(){{lanzar({{accion:'testm2',duty:$('tmduty').checked}})}}
 function m2(){{lanzar({{accion:'m2',progs:sel('m2prog'),
  campaigns:+$('m2n').value,nobuild:$('m2nb').checked}})}}
 function verify(){{lanzar({{accion:'verify',
