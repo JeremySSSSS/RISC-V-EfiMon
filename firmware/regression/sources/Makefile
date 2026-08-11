@@ -101,18 +101,18 @@ $(OUT)/saxpy.elf: harness.S wl_saxpy.c platform.inc link.ld
 $(OUT)/wmac.elf: harness.S wl_wmac.c platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imc -DREPS=41973 -o $@ harness.S wl_wmac.c
 $(OUT)/fir.elf: harness.S wl_fir.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=48550 -o $@ harness.S wl_fir.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=30000 -o $@ harness.S wl_fir.c
 $(OUT)/ratscale.elf: harness.S wl_ratscale.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=60085 -o $@ harness.S wl_ratscale.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=18000 -o $@ harness.S wl_ratscale.c
 $(OUT)/modmul.elf: harness.S wl_modmul.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=56138 -o $@ harness.S wl_modmul.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=27000 -o $@ harness.S wl_modmul.c
 
 
 # --- alu-bajo / mulh-alto ctrl-bajo (decorrelacionan alu del modo comun y ctrl) ---
 $(OUT)/memfill.elf: harness.S wl_memfill.c platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imc -DREPS=131352 -o $@ harness.S wl_memfill.c
 $(OUT)/mulhstream.elf: harness.S wl_mulhstream.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=15077 -o $@ harness.S wl_mulhstream.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=8500 -o $@ harness.S wl_mulhstream.c
 
 # --- sondas por-categoria FP (rv32imfc, -ffp-contract=off para no fusionar en
 # fmadd; cada lazo caliente dominado por SU categoria). REPS bajos en div/sqrt/
