@@ -1,7 +1,7 @@
 # Variantes de ciclo de trabajo (barrido de intensidad estilo EfiMon).
 # GENERADO: REPS = trabajo POR TANDA (el harness llama al kernel CHUNKS
 # veces); activo ~12s (d60) / ~6s (d30); ventana total ~20 s.
-DUTY_ELFS := $(OUT)/crc_d60.elf $(OUT)/crc_d30.elf $(OUT)/dotprod_d60.elf $(OUT)/dotprod_d30.elf $(OUT)/fpoly_d60.elf $(OUT)/fpoly_d30.elf $(OUT)/fsm_d60.elf $(OUT)/fsm_d30.elf $(OUT)/gcd_d60.elf $(OUT)/gcd_d30.elf $(OUT)/histogram_d60.elf $(OUT)/histogram_d30.elf $(OUT)/matmul_d60.elf $(OUT)/matmul_d30.elf $(OUT)/memcpy_d60.elf $(OUT)/memcpy_d30.elf $(OUT)/modpow_d60.elf $(OUT)/modpow_d30.elf $(OUT)/mulhash64_d60.elf $(OUT)/mulhash64_d30.elf $(OUT)/mulhscale_d60.elf $(OUT)/mulhscale_d30.elf $(OUT)/radix_d60.elf $(OUT)/radix_d30.elf $(OUT)/sort_d60.elf $(OUT)/sort_d30.elf $(OUT)/trialdiv_d60.elf $(OUT)/trialdiv_d30.elf $(OUT)/vecscale_d60.elf $(OUT)/vecscale_d30.elf
+DUTY_ELFS := $(OUT)/dmul_d60.elf $(OUT)/dmul_d30.elf $(OUT)/dmulh_d60.elf $(OUT)/dmulh_d30.elf $(OUT)/ddiv_d60.elf $(OUT)/ddiv_d30.elf $(OUT)/dctrl_d60.elf $(OUT)/dctrl_d30.elf $(OUT)/crc_d60.elf $(OUT)/crc_d30.elf $(OUT)/dotprod_d60.elf $(OUT)/dotprod_d30.elf $(OUT)/fpoly_d60.elf $(OUT)/fpoly_d30.elf $(OUT)/fsm_d60.elf $(OUT)/fsm_d30.elf $(OUT)/gcd_d60.elf $(OUT)/gcd_d30.elf $(OUT)/histogram_d60.elf $(OUT)/histogram_d30.elf $(OUT)/matmul_d60.elf $(OUT)/matmul_d30.elf $(OUT)/memcpy_d60.elf $(OUT)/memcpy_d30.elf $(OUT)/modpow_d60.elf $(OUT)/modpow_d30.elf $(OUT)/mulhash64_d60.elf $(OUT)/mulhash64_d30.elf $(OUT)/mulhscale_d60.elf $(OUT)/mulhscale_d30.elf $(OUT)/radix_d60.elf $(OUT)/radix_d30.elf $(OUT)/sort_d60.elf $(OUT)/sort_d30.elf $(OUT)/trialdiv_d60.elf $(OUT)/trialdiv_d30.elf $(OUT)/vecscale_d60.elf $(OUT)/vecscale_d30.elf
 
 
 $(OUT)/crc_d60.elf: harness.S wl_crc.c platform.inc link.ld
@@ -133,3 +133,23 @@ $(OUT)/mulhstream_d60.elf: harness.S wl_mulhstream.c platform.inc link.ld
 
 $(OUT)/mulhstream_d30.elf: harness.S wl_mulhstream.c platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imc -DREPS=255 -DCHUNKS=10 -DSLEEP_TICKS=8400000 -o $@ harness.S wl_mulhstream.c
+
+
+# --- duty variants de los kernels DOMINANTES enteros (barrido de intensidad
+# para anclar mul/mulh/div/ctrl con 3 puntos c/u). SLEEP estandar 4.8M/8.4M.
+$(OUT)/dmul_d60.elf: harness.S wl_dmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1004 -DCHUNKS=10 -DSLEEP_TICKS=4800000 -o $@ harness.S wl_dmul.c
+$(OUT)/dmul_d30.elf: harness.S wl_dmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=502 -DCHUNKS=10 -DSLEEP_TICKS=8400000 -o $@ harness.S wl_dmul.c
+$(OUT)/dmulh_d60.elf: harness.S wl_dmulh.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=306 -DCHUNKS=10 -DSLEEP_TICKS=4800000 -o $@ harness.S wl_dmulh.c
+$(OUT)/dmulh_d30.elf: harness.S wl_dmulh.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=153 -DCHUNKS=10 -DSLEEP_TICKS=8400000 -o $@ harness.S wl_dmulh.c
+$(OUT)/ddiv_d60.elf: harness.S wl_ddiv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=157 -DCHUNKS=10 -DSLEEP_TICKS=4800000 -o $@ harness.S wl_ddiv.c
+$(OUT)/ddiv_d30.elf: harness.S wl_ddiv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=78 -DCHUNKS=10 -DSLEEP_TICKS=8400000 -o $@ harness.S wl_ddiv.c
+$(OUT)/dctrl_d60.elf: harness.S wl_dctrl.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1260 -DCHUNKS=10 -DSLEEP_TICKS=4800000 -o $@ harness.S wl_dctrl.c
+$(OUT)/dctrl_d30.elf: harness.S wl_dctrl.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=630 -DCHUNKS=10 -DSLEEP_TICKS=8400000 -o $@ harness.S wl_dctrl.c

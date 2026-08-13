@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Promedia los coeficientes de las ultimas N tandas de M1 (respaldos con
-timestamp en loops/campaigns/) y los escribe en loops/coefficients.csv.
+timestamp en bucles/campanas/) y los escribe en bucles/coeficientes.csv.
 
-Las "tandas" (campaigns) corren la campana entera varias veces y cada una
+Las "tandas" (campanas) corren la campana entera varias veces y cada una
 sobreescribe el coef (la ultima queda); este script toma las N mas recientes y
 promedia parametro por parametro. Preserva una fila 'fetch' existente (del
 barrido) si ya estaba. Orden recomendado: tandas -> promediar -> barrido.
@@ -18,8 +18,8 @@ import os
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CAMPANAS = os.path.join(HERE, "loops", "campaigns")
-COEF = os.path.join(HERE, "loops", "coefficients.csv")
+CAMPANAS = os.path.join(HERE, "bucles", "campanas")
+COEF = os.path.join(HERE, "bucles", "coeficientes.csv")
 
 
 def load(f):
@@ -51,7 +51,7 @@ def main():
             if k not in keys:
                 keys.append(k)
 
-    # preserva un 'fetch' que ya estuviera en coefficients.csv (del barrido)
+    # preserva un 'fetch' que ya estuviera en coeficientes.csv (del barrido)
     fetch_prev = None
     if os.path.exists(COEF):
         prev = load(COEF)

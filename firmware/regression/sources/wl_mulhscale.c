@@ -1,7 +1,7 @@
 /* MULHSCALE: escalado en punto fijo Q31 tomando SOLO la palabra alta del
  * producto: (int32)(((int64)a*b)>>32). Cuando unicamente se usa la parte alta,
  * GCC emite MULH sin MUL -> desacopla la pareja mul/mulh, que en el resto del
- * set siempre aparece junta (mulhash64, dotprod) y deja la regression sin forma
+ * set siempre aparece junta (mulhash64, dotprod) y deja la regresion sin forma
  * de separar sus costos (mul llego a salir negativo). Con matmul (mul solo) y
  * este (mulh dominante), las columnas quedan independientes. Entera, sin
  * float -> segura. */

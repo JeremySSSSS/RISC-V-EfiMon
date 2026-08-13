@@ -4,16 +4,16 @@ CROSS := $(RISCV)/bin/riscv32-unknown-elf-
 CC    := $(CROSS)gcc
 
 OUT := elf
-ELF := $(OUT)/hw_verification.elf
+ELF := $(OUT)/verificacion_hw.elf
 
 FLAGS := -nostdlib -nostartfiles -static -Os -g -mabi=ilp32 \
-	-Wl,-T,../loops/sources/link.ld -Wl,--build-id=none \
-	-I../loops/sources -march=rv32imfc
+	-Wl,-T,../bucles/fuentes/link.ld -Wl,--build-id=none \
+	-I../bucles/fuentes -march=rv32imfc
 
 .PHONY: all clean
 all: $(ELF)
 
-$(ELF): hw_verification.S ../loops/sources/platform.inc ../loops/sources/link.ld | $(OUT)
+$(ELF): verificacion_hw.S ../bucles/fuentes/platform.inc ../bucles/fuentes/link.ld | $(OUT)
 	$(CC) $(FLAGS) -o $@ $<
 
 $(OUT):

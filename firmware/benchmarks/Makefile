@@ -1,4 +1,4 @@
-# Benchmarks de validation del model (held-out, NUNCA usados en calibracion).
+# Benchmarks de validacion del modelo (held-out, NUNCA usados en calibracion).
 # Todos en assembly (.S): cada ELF = harness.S + wl_<nombre>.S.
 # Los float usan SOLO el set FP probado en HW (fadd/fmul/fsub/fmax
 # independientes, sin fmadd/cadenas seriales); ver comentario de cada wl_*.S.
@@ -7,8 +7,10 @@ CROSS := $(RISCV)/bin/riscv32-unknown-elf-
 CC    := $(CROSS)gcc
 
 # Conjunto oficial ANTERIOR (ensamblador, histograma fijo): RETIRADO por
-# decision de validar solo con codigo real de BEEBS. Los kernels sinteticos
-# wl_*.S de exploracion no se incluyen en este repositorio.
+# decision de validar solo con codigo real de BEEBS. Fuentes wl_*.S
+# conservadas como referencia de las mediciones historicas.
+# BENCH_INT := sha256 primes conv floyd bitcount fixmul bsearch wmul divsum mixed
+# BENCH_FP  := fpgain fpalu fpmem ycbcr
 BENCH_INT :=
 BENCH_FP  :=
 # Cargas REALES: kernels de BEEBS (Pallister et al. 2013) sin modificar, en
@@ -16,13 +18,26 @@ BENCH_FP  :=
 # verify -> run_workload). REPS apunta a ventanas de ~15-35 s a 10 MHz;
 # ajustar tras la primera corrida si la ventana queda corta o larga.
 BENCH_BEEBS := mont64 ud jfdctint nettleaes strsearch huffbench levenshtein ns aqsort
-# gray: la unica propia (float); los kernels float de BEEBS usan double o
-# acumulaciones dependientes que la FPU de este bitstream no ejecuta estable
-BENCH_C_FP := gray
+# Validacion held-out float. Solo la unidad ADDMUL/CONV de la FPU de este bitstream
+# tolera DATO FRESCO (operando recien producido por fcvt/otra op FP): fadd, fmul,
+# fmadd, fcvt. Con eso:
+#   gray -> fp_mul + fp_add (+ fp_conv en todo, via fcvt)
+#   ffma -> fp_fma  (y=GAIN*x+OFFSET, GAIN/OFFSET constantes, x fresco; 4.5s, err<0.05%)
+# La unidad DIVSQRT (fdiv, fsqrt) y NONCOMP (fmax/fmin/fsgnj/cmp) SOLO funcionan con
+# operandos CONSTANTES en registro (la forma de los probes de M2): cualquier input
+# FRESCO las deadlockea, aunque el resultado se descarte (verificado: fmag con fsqrt
+# de fcvt y resultado sin leer COLGO). Por eso fp_div/fp_sqrt/fp_noncomp NO admiten
+# benchmark real held-out en este HW; quedan validadas solo via sus probes de M2.
+# fmag (fp_sqrt), fratio (fp_div), flim (fp_noncomp) RETIRADOS por esto; .c como ref.
+BENCH_C_FP := gray ffma
 # Cargas reales que ejercitan mulh/div (validacion held-out): modexp (Montgomery),
 # bigdiv (division larga), ratapprox (fracciones continuas). run_workload en C.
 BENCH_MULHDIV := modexp bigdiv ratapprox
-ELFS := $(addsuffix .elf,$(BENCH_INT) $(BENCH_FP) $(BENCH_BEEBS) $(BENCH_C_FP) $(BENCH_MULHDIV))
+# Cargas reales EXTRA (no-BEEBS) para cubrir mulh, rara en codigo real:
+# algoritmos de referencia sin modificar en extra/<nombre>.c (PCG32 de
+# O'Neill y xxHash64 de Collet), aritmetica 64 bits -> mul+mulh en RV32.
+BENCH_MULH := pcg32 xxhash64
+ELFS := $(addsuffix .elf,$(BENCH_INT) $(BENCH_FP) $(BENCH_BEEBS) $(BENCH_C_FP) $(BENCH_MULH))
 
 mont64.elf:      REPS := 20000
 ud.elf:          REPS := 55000
@@ -41,6 +56,10 @@ levenshtein.elf: REPS := 4000
 ns.elf:          REPS := 20000
 ns.elf:          KFLAGS += -fno-ipa-pure-const
 aqsort.elf:      REPS := 18000
+# extra (mulh): REPS estimadas para ~20-25 s a 10 MHz; ajustar tras la
+# primera corrida como con el resto
+pcg32.elf:       REPS := 8000
+xxhash64.elf:    REPS := 60000
 aqsort.elf:      KFLAGS += -DQUICK_SORT
 # perlin (stb_perlin de BEEBS): RETIRADO. Sin instrucciones FP prohibidas
 # (solo fadd/fmul/fsub/fcvt/feq), pero sus cadenas de lerps (~6-9 ops FP
@@ -67,10 +86,18 @@ KFLAGS := $(FLAGS) -fno-builtin -fno-tree-loop-distribute-patterns
 
 ARCH := rv32imc
 $(addsuffix .elf,$(BENCH_FP)): ARCH := rv32imfc
-# gray es float en C: rv32imfc y SIN contraccion a fmadd (fuera del conjunto
+# cargas float en C: rv32imfc y SIN contraccion a fmadd (fuera del conjunto
 # probado de la FPU de este bitstream)
-gray.elf: ARCH := rv32imfc
-gray.elf: KFLAGS += -ffp-contract=off
+gray.elf fmag.elf fratio.elf flim.elf ffma.elf: ARCH := rv32imfc
+gray.elf fmag.elf fratio.elf flim.elf ffma.elf: KFLAGS += -ffp-contract=off
+# ffma: fp_fma via __builtin_fmaf explicito. y = GAIN*x + OFFSET con GAIN/OFFSET
+# CONSTANTES en registros (como el probe fpfma que SI corrio), solo x fresco.
+# REPS por benchmark fp (~12 s a 10 MHz). fmag/fratio son multi-ciclo (fsqrt/fdiv)
+# -> pocas REPS bastan; flim/ffma son rapidos -> mas REPS. Ajustar tras el 1er pase.
+fmag.elf:   KFLAGS += -DREPS=8000
+fratio.elf: KFLAGS += -DREPS=9000
+flim.elf:   KFLAGS += -DREPS=4000
+ffma.elf:   KFLAGS += -DREPS=8000
 
 .PHONY: all clean
 all: $(ELFS)

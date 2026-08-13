@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""I/O with the Google Sheet through the Web App (Apps Script), routing by
-tab NAME (parameter 'hoja') -> no GIDs needed.
+"""I/O con el Google Sheet a traves del Web App (Apps Script), enrutando por
+NOMBRE de pestaña (parametro 'hoja') -> no hacen falta GIDs.
 
-  subir(hoja, **campos)  -> appends a row to that tab
-  leer(hoja)             -> list of dicts (one per row, keyed by header)
-  ultima(hoja)           -> the last row (dict) or None
+  subir(hoja, **campos)  -> agrega una fila a esa pestaña
+  leer(hoja)             -> lista de dicts (una por fila, por encabezado)
+  ultima(hoja)           -> la ultima fila (dict) o None
 
-The ESP32 keeps posting to 'inbox' (Apps Script default) unchanged.
+El ESP32 sigue subiendo a 'inbox' (default del Apps Script) sin cambios.
 """
 import csv
 import io
@@ -15,16 +15,20 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-# Web App URL (/exec): lives in config_local.py (not versioned; see
-# config_local.py.example). Update it there after redeploying the Apps Script.
+# URL del Web App (/exec): vive en config_local.py (no versionado; ver
+# config_local.py.example). Actualizar alli tras redeployar el Apps Script.
 from config_local import SCRIPT_URL  # noqa: E402
 
-REINTENTOS = 4   # the Apps Script returns transient 500s (cold start, tab creation)
+REINTENTOS = 10  # el Apps Script da 500 transitorios (cold start, crear pestaña)
+                 # y 404 INTERMITENTES en el redirect a googleusercontent (flakeo
+                 # de Google bajo requests rapidos). Con mas reintentos + backoff
+                 # un pico de fallos no aborta la campana entera.
 
 
 def _get(params):
-    """GET to the Web App with retries. The Apps Script raises transient 500s
-    (cold start, first insertSheet) -> retry with backoff."""
+    """GET al Web App con reintentos. El Apps Script lanza 500 transitorios
+    (arranque en frio, insertSheet la 1.ra vez) y 404 intermitentes en el
+    redirect -> reintenta con backoff (cap 15 s)."""
     url = f"{SCRIPT_URL}?{urllib.parse.urlencode(params)}"
     for intento in range(1, REINTENTOS + 1):
         try:
@@ -33,17 +37,17 @@ def _get(params):
         except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as e:
             if intento == REINTENTOS:
                 raise
-            print(f"    [sheet] {e} (attempt {intento}/{REINTENTOS}); retrying...")
-            time.sleep(2 * intento)
+            print(f"    [sheet] {e} (intento {intento}/{REINTENTOS}); reintento...")
+            time.sleep(min(2 * intento, 15))
 
 
 def subir(hoja, **campos):
-    """Appends a row to tab 'hoja' with the given fields."""
+    """Agrega una fila a la pestaña 'hoja' con los campos dados."""
     return _get(dict(hoja=hoja, **campos))
 
 
 def leer(hoja):
-    """Returns the tab rows as a list of dicts (keyed by header)."""
+    """Devuelve las filas de la pestaña como lista de dicts (por encabezado)."""
     text = _get(dict(hoja=hoja, accion="leer"))
     rows = [r for r in csv.reader(io.StringIO(text)) if r]
     if len(rows) < 2:
@@ -62,25 +66,25 @@ def n_filas(hoja):
 
 
 def fnum(x):
-    """Number from the Sheet (es-ES locale: comma decimals)."""
+    """Numero del Sheet (locale es-ES: decimales con coma)."""
     return float(str(x).replace(",", "."))
 
 
 class Inbox:
-    """Waits for the rows the ESP32 posts to 'inbox' (one per measured window).
-    Detects a new row by count; get_pavg() blocks until it appears."""
+    """Espera las filas que sube el ESP32 a 'inbox' (una por ventana medida).
+    Detecta fila nueva por conteo; get_pavg() bloquea hasta que aparezca."""
 
     def __init__(self, hoja="inbox"):
         self.hoja = hoja
         self.seen = n_filas(hoja)
 
     def get_pavg(self, timeout=30, esperado_s=None):
-        """Waits for the ESP32's new row and returns its p_avg. If the expected
-        window duration (esperado_s) is known, it is checked against the row's
-        duration_ms: a row with an incompatible duration is an OLD window that
-        arrived late (e.g. from a retry) and is DISCARDED instead of being
-        paired with the wrong run --- without this guard, a stray row would
-        misalign every following run of the batch."""
+        """Espera la fila nueva del ESP32 y devuelve su p_avg. Si se conoce la
+        duracion esperada de la ventana (esperado_s), se verifica contra la
+        duration_ms de la fila: una fila con duracion incompatible es una
+        ventana VIEJA que llego tarde (p.ej. de un reintento) y se DESCARTA en
+        vez de aparearse con la corrida equivocada --- sin esta guarda, una
+        fila sobrante desalinea todas las corridas siguientes de la tanda."""
         t0 = time.time()
         avisado = False
         while time.time() - t0 < timeout:
@@ -91,14 +95,22 @@ class Inbox:
                 if esperado_s is not None and fila.get("duration_ms"):
                     dur = fnum(fila["duration_ms"]) / 1e3
                     if abs(dur - esperado_s) > max(2.0, 0.15 * esperado_s):
-                        print(f"    [GUARD] ESP32 row with duration "
-                              f"{dur:.1f} s (expected {esperado_s:.1f} s): "
-                              f"misaligned old window, discarding it and "
-                              f"waiting for the correct one")
+                        print(f"    [GUARDA] fila del ESP32 con duracion "
+                              f"{dur:.1f} s (esperaba {esperado_s:.1f} s): "
+                              f"ventana vieja desalineada, la descarto y sigo "
+                              f"esperando la correcta")
                         continue
                 return fnum(fila["p_avg"])
-            if not avisado:   # a single notice, not one every 3 s
-                print(f"    waiting for the ESP32 window (max {timeout} s)...")
+            if not avisado:   # un solo aviso, no uno cada 3 s
+                print(f"    esperando la ventana del ESP32 (max {timeout} s)...")
                 avisado = True
             time.sleep(3)
-        raise TimeoutError(f"timeout waiting for a new row in '{self.hoja}'")
+        raise TimeoutError(f"timeout esperando fila nueva en '{self.hoja}'")
+
+    def reset(self):
+        """Fija 'seen' al conteo ACTUAL de filas: se llama JUSTO ANTES de correr
+        el kernel, para que get_pavg solo acepte ventanas subidas DESPUES (drena
+        las pendientes/atrasadas). Sin esto, una ventana vieja que llega tarde se
+        aparea con la corrida equivocada (p.ej. fpdiv tomando la ventana de fpfma
+        cuando sus duraciones son parecidas y el guard no las distingue)."""
+        self.seen = n_filas(self.hoja)

@@ -153,7 +153,7 @@
 
 # Lee los 16 CSR en registros (sin stores entremedio, para no contaminar
 # MEM) y los vuelca a 'results' junto con mcycle ini/fin (s1/s2).
-# results = 30 words: [28 CSR en orden 0xBC0..0xBDB][mcycle_ini][mcycle_fin]
+# results = 32 words: [26 CSR 0xBC0..0xBDB][mcycle_ini][mcycle_fin][fetch_lo][fetch_hi]
 .macro dump_counters
     la   s4, results
     csrr t0, CSR_CAT_ALU_LO;        sw t0,   0(s4)

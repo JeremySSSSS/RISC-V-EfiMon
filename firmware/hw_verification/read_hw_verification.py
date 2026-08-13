@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runs the mixed verification program and stores its global composition."""
+"""Ejecuta el programa mixto de verificacion y guarda su composicion global."""
 import csv
 import os
 import re
@@ -9,8 +9,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GDB_BIN = os.environ.get("GDB_BIN", "gdb-multiarch")
-ELF = os.path.join(HERE, "elf", "hw_verification.elf")
-OUT_CSV = os.path.join(HERE, "hw_verification.csv")
+ELF = os.path.join(HERE, "elf", "verificacion_hw.elf")
+OUT_CSV = os.path.join(HERE, "verificacion_hw.csv")
 
 GDB_SCRIPT = """\
 set pagination off
@@ -60,7 +60,7 @@ def run_gdb():
             _, rest = line.split(":", 1)
             words.extend(int(x, 16) for x in WORD.findall(rest))
     if len(words) != 32:
-        raise RuntimeError(f"expected 32 words but got {len(words)}\n{out}")
+        raise RuntimeError(f"se esperaban 32 words y llegaron {len(words)}\n{out}")
     return words
 
 
@@ -89,7 +89,7 @@ def main():
               "n_fp_noncomp", "n_fp_conv"):
         print(f"{k[2:]:5s}: {row[k]:7d}  {100*row[k]/instr:6.2f}%")
     print(f"c_div : {row['c_div']:7d}"
-          f"  ({row['c_div']/row['n_div']:.1f} cycles/div)")
+          f"  ({row['c_div']/row['n_div']:.1f} ciclos/div)")
     print(f"mcycle: {row['mcycle']}")
     print(f"CSV: {OUT_CSV}")
 

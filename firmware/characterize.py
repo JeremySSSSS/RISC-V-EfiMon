@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Caracterizacion de coefficients energeticos — script UNICO para los 2 methods:
+"""Caracterizacion de coeficientes energeticos — script UNICO para los 2 metodos:
 
-  loops    (M1): un bucle dominado por categoria, aislada contra idle.
+  bucles    (M1): un bucle dominado por categoria, aislada contra idle.
                   coef_i = (P_cat - P_idle) * T / n_i   (div usa DIVCYC)
-  regression (M2): programas mixtos reales; NNLS CON intercepto (modelo efimon,
+  regresion (M2): programas mixtos reales; NNLS CON intercepto (modelo efimon,
                   el del paper): P_med = P_static + sum e_i * (n_i / T),
                   con barrido de intensidad d100/d60/d30
 
-Cada method guarda data.csv y coefficients.csv en su directorio (loops/ o
-regression/) y sube a su pestaña del Sheet. verify.py consume esos
-coefficients.csv con el mismo formato common.
+Cada metodo guarda datos.csv y coeficientes.csv en su directorio (bucles/ o
+regresion/) y sube a su pestaña del Sheet. verificar.py consume esos
+coeficientes.csv con el mismo formato comun.
 
 Uso:
-    python3 characterize.py loops --repeats 2
-    python3 characterize.py loops alu mul div
-    python3 characterize.py regression
-    python3 characterize.py regression --refit
-    python3 characterize.py regression --pidle loops
+    python3 caracterizar.py bucles --repeats 2
+    python3 caracterizar.py bucles alu mul div
+    python3 caracterizar.py regresion
+    python3 caracterizar.py regresion --refit
+    python3 caracterizar.py regresion --pidle bucles
 """
 import argparse
 import csv
@@ -30,49 +30,59 @@ import time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "common"))
+sys.path.insert(0, os.path.join(HERE, "comun"))
 import jtag      # noqa: E402
-import model    # noqa: E402
+import modelo    # noqa: E402
 import sheet     # noqa: E402
 
-F_CLK = model.F_CLK
-DIR_BUCLES = os.path.join(HERE, "loops")
-DIR_REGR = os.path.join(HERE, "regression")
+# La campana tiene corridas LARGAS (idle ~40 s, variantes _d30 ~20 s de ventana),
+# asi que fuerza un timeout amplio y varios reintentos aunque el entorno traiga
+# un GDB_TIMEOUT/RETRIES chico (p.ej. el del smoke-test: GDB_TIMEOUT=15). Sin
+# esto, el idle de 40 s aborta la campana entera al primer intento.
+if jtag.GDB_TIMEOUT < 120:
+    jtag.GDB_TIMEOUT = 480
+if jtag.RETRIES < 3:
+    jtag.RETRIES = 5
 
-# --- common a ambos methods -------------------------------------------------
+F_CLK = modelo.F_CLK
+DIR_BUCLES = os.path.join(HERE, "bucles")
+DIR_REGR = os.path.join(HERE, "regresion")
+
+# --- comun a ambos metodos -------------------------------------------------
 
 def respaldar_coef(coef_csv):
-    """Copia con timestamp en campaigns/: coefficients.csv se sobreescribe en
-    cada campaign, pero el juego de CADA campaign queda respaldado (para el
+    """Copia con timestamp en campanas/: coeficientes.csv se sobreescribe en
+    cada campana, pero el juego de CADA campana queda respaldado (para el
     analisis de reproducibilidad y para poder restaurar un juego anterior)."""
-    d = os.path.join(os.path.dirname(coef_csv), "campaigns")
+    d = os.path.join(os.path.dirname(coef_csv), "campanas")
     os.makedirs(d, exist_ok=True)
-    dst = os.path.join(d, time.strftime("coefficients_%Y%m%d_%H%M%S.csv"))
+    dst = os.path.join(d, time.strftime("coeficientes_%Y%m%d_%H%M%S.csv"))
     shutil.copy(coef_csv, dst)
     return dst
 
 
 def run_make(met_dir):
-    subprocess.run(["make", "-B", "all"], cwd=os.path.join(met_dir, "sources"), check=True)
+    subprocess.run(["make", "-B", "all"], cwd=os.path.join(met_dir, "fuentes"), check=True)
 
 
 def find_elf(prog, met_dir):
-    # idle.elf vive en loops/ (es el run de referencia del piso para ambos)
+    # idle.elf vive en bucles/ (es el run de referencia del piso para ambos)
     for cand in (os.path.join(met_dir, "elf", f"{prog}.elf"),
                  os.path.join(DIR_BUCLES, "elf", f"{prog}.elf"), prog):
         if os.path.exists(cand):
             return cand
-    raise FileNotFoundError(f"{prog}.elf no existe (corre 'make' en {met_dir}/sources)")
+    raise FileNotFoundError(f"{prog}.elf no existe (corre 'make' en {met_dir}/fuentes)")
 
 
-def measure_one(prog, elf, inbox):
+def medir_uno(prog, elf, inbox):
     """Corre un elf por JTAG y devuelve (P_med, T, contadores, temp_str)."""
     if prog == "idle":
         # idle (wfi) es robusto a la inflacion del JTAG (una ventana de idle
         # inflada sigue midiendo idle) y tiene IPC~0 por diseno -> 1 corrida.
         # Si la fila del ESP32 no llega (subida perdida), se reintenta la
-        # MEDIDA completa hasta 3 veces en vez de abortar la campaign.
+        # MEDIDA completa hasta 3 veces en vez de abortar la campana.
         for intento in range(1, 4):
+            inbox.reset()          # drena ventanas pendientes antes de medir
             words = jtag.run_one(elf)
             try:
                 P_med = inbox.get_pavg()
@@ -83,9 +93,9 @@ def measure_one(prog, elf, inbox):
                 print(f"    idle: ventana sin P_avg del ESP32; REINTENTO "
                       f"({intento}/3)")
     else:
-        words, P_med = jtag.run_medido(elf, inbox.get_pavg)
-    w = [model.to_int(x) for x in words]
-    cont = model.contadores(w)
+        words, P_med = jtag.run_medido(elf, inbox.get_pavg, reset=inbox.reset)
+    w = [modelo.to_int(x) for x in words]
+    cont = modelo.contadores(w)
     T = cont["mcycle"] / F_CLK
     # Variantes de ciclo de trabajo: mcycle se CONGELA durante el wfi, asi que
     # mcycle/F_CLK es solo el tiempo ACTIVO. La ventana real (la que promedia el
@@ -100,14 +110,14 @@ def measure_one(prog, elf, inbox):
 
 
 def subir_sheet(hoja, **campos):
-    try:    # la pestaña del Sheet es secundaria: data.csv ya tiene la fila
+    try:    # la pestaña del Sheet es secundaria: datos.csv ya tiene la fila
         sheet.subir(hoja, **campos)
     except Exception as e:
-        print(f"    [aviso] no se pudo subir a '{hoja}' ({e}); sigo (esta en data.csv)")
+        print(f"    [aviso] no se pudo subir a '{hoja}' ({e}); sigo (esta en datos.csv)")
 
 
 def rotar_si_header_distinto(path, header):
-    """Si data.csv existe con OTRO encabezado (esquema viejo), lo aparta a
+    """Si datos.csv existe con OTRO encabezado (esquema viejo), lo aparta a
     datos_legacy_*.csv en vez de apendear filas desalineadas."""
     if not os.path.exists(path):
         return
@@ -119,13 +129,15 @@ def rotar_si_header_distinto(path, header):
         print(f"[aviso] {os.path.basename(path)} tenia esquema viejo -> movido a {os.path.basename(legado)}")
 
 
-# --- method 1: loops dominados ---------------------------------------------
+# --- metodo 1: bucles dominados ---------------------------------------------
 
 CATS = ["idle", "alu", "mul", "mulh", "div", "mem", "ctrl",
         "fp_add", "fp_mul", "fp_fma", "fp_div", "fp_sqrt",
         "fp_noncomp", "fp_conv"]
 COEF_CATS = CATS[1:]
-DENOM = {"alu": "n_alu", "mul": "n_mul", "mulh": "n_mulh", "div": "c_div",
+# div se calibra por INSTRUCCION (n_div): la latencia ~fija del bucle dominado
+# (c~21) queda plegada en el coeficiente. Modelo homogeneo (todo por conteo).
+DENOM = {"alu": "n_alu", "mul": "n_mul", "mulh": "n_mulh", "div": "n_div",
          "mem": "n_mem", "ctrl": "n_ctrl", "fp_add": "n_fp_add",
          "fp_mul": "n_fp_mul", "fp_fma": "n_fp_fma", "fp_div": "n_fp_div",
          "fp_sqrt": "n_fp_sqrt", "fp_noncomp": "n_fp_noncomp",
@@ -133,8 +145,8 @@ DENOM = {"alu": "n_alu", "mul": "n_mul", "mulh": "n_mulh", "div": "c_div",
 
 
 def cmd_bucles(args):
-    datos_csv = os.path.join(DIR_BUCLES, "data.csv")
-    coef_csv = os.path.join(DIR_BUCLES, "coefficients.csv")
+    datos_csv = os.path.join(DIR_BUCLES, "datos.csv")
+    coef_csv = os.path.join(DIR_BUCLES, "coeficientes.csv")
 
     cats = args.categorias or CATS
     invalid = [c for c in cats if c not in CATS]
@@ -148,7 +160,7 @@ def cmd_bucles(args):
     for cat in cats:
         find_elf(cat, DIR_BUCLES)
 
-    header = ["fecha", "categoria", "rep", "P_med_W", "T_s", "temp_C"] + model.COLS_CONTADORES
+    header = ["fecha", "categoria", "rep", "P_med_W", "T_s", "temp_C"] + modelo.COLS_CONTADORES
     rotar_si_header_distinto(datos_csv, header)
     inbox = sheet.Inbox()
     runs = {c: [] for c in cats}
@@ -170,15 +182,15 @@ def cmd_bucles(args):
                     falta = (time.time() - t0) / (i - 1) * (total - i + 1)
                     eta = f"   [faltan ~{falta/60:.0f} min]"
                 print(f"==> [{i:2d}/{total}] {nom}{eta}")
-                P_med, T, cont, tstr = measure_one(cat, elf, inbox)
+                P_med, T, cont, tstr = medir_uno(cat, elf, inbox)
                 runs[cat].append({"P_med": P_med, "T": T, "cont": cont, "temp": tstr})
                 ts = time.strftime("%Y-%m-%d %H:%M:%S")
                 wr.writerow([ts, cat, rep, f"{P_med:.6f}", f"{T:.6f}", tstr]
-                            + [cont[k] for k in model.COLS_CONTADORES])
+                            + [cont[k] for k in modelo.COLS_CONTADORES])
                 fd.flush()
-                subir_sheet("loops", categoria=cat, rep=rep, P_med_W=f"{P_med:.6f}",
+                subir_sheet("bucles", categoria=cat, rep=rep, P_med_W=f"{P_med:.6f}",
                             T_s=f"{T:.6f}", temp_C=tstr,
-                            **{k: cont[k] for k in model.COLS_CONTADORES})
+                            **{k: cont[k] for k in modelo.COLS_CONTADORES})
                 die = f"   die {tstr} C" if tstr else ""
                 if cat == "idle":
                     print(f"    P = {P_med:.4f} W  (linea base de la sesion){die}")
@@ -213,77 +225,98 @@ def cmd_bucles(args):
                         coefs[cat], len(cat_coefs)))
 
     # Fusion con el archivo previo: una corrida parcial (p.ej. solo ctrl) NO
-    # borra los coefficients de las otras categorias. Es valido mezclar: cada
+    # borra los coeficientes de las otras categorias. Es valido mezclar: cada
     # coef es un delta interno a SU sesion (P_cat y P_idle de la misma sesion);
     # P_idle/T_idle del archivo quedan los de HOY, que son los que la
     # verificacion de hoy necesita como linea base.
     if os.path.exists(coef_csv):
         try:
-            _, prev = model.cargar_coefficients(coef_csv)
+            _, prev = modelo.cargar_coeficientes(coef_csv)
             faltan = {c: v for c, v in prev.items()
                       if c in COEF_CATS and c not in coefs}
             if faltan:
                 print(f"  (conservo del archivo previo: {', '.join(sorted(faltan))})")
                 coefs.update(faltan)
         except Exception as e:
-            print(f"  [aviso] no pude leer coefficients previos ({e}); "
+            print(f"  [aviso] no pude leer coeficientes previos ({e}); "
                   f"escribo solo lo medido")
 
     with open(coef_csv, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow([f"# Bucles dominados (M1). Generado {time.strftime('%Y-%m-%d %H:%M:%S')}.",
-                    "coef=(P_cat-P_idle)*T/n; div usa DIVCYC."])
+                    "coef=(P_cat-P_idle)*T/n_i por instruccion (div: c~21 plegado)."])
         w.writerow(["parametro", "coef", "unidad"])
         w.writerow(["P_idle", f"{P_idle:.6f}", "W"])
         if T_idle is not None:
             w.writerow(["T_idle", f"{T_idle:.2f}", "C"])
         for cat in COEF_CATS:
             if cat in coefs:
-                unidad = "J/ciclo" if cat == "div" else "J/instr"
-                w.writerow([cat, f"{coefs[cat]:.6e}", unidad])
+                w.writerow([cat, f"{coefs[cat]:.6e}", "J/instr"])
 
     tstr = f" @ {T_idle:.1f} C" if T_idle is not None else ""
-    print(f"\n=== M1 loops: coefficients de la sesion ===")
+    print(f"\n=== M1 bucles: coeficientes de la sesion ===")
     print(f"P_idle = {P_idle:.4f} W{tstr}   (n_idle = {len(runs['idle'])})")
     print(f"{'categoria':10s} {'delta[mW]':>10s} {'eventos':>15s} {'coef[nJ]':>9s}  unidad     reps")
     for cat, delta, denom, coef, n in resumen:
-        unidad = "nJ/ciclo" if cat == "div" else "nJ/instr"
-        print(f"{cat:10s} {delta*1e3:10.2f} {denom:15,.0f} {coef*1e9:9.3f}  {unidad:9s} {n}")
+        print(f"{cat:10s} {delta*1e3:10.2f} {denom:15,.0f} {coef*1e9:9.3f}  {'nJ/instr':9s} {n}")
     resp = respaldar_coef(coef_csv)
-    print(f"\nGuardado: {datos_csv}, {coef_csv} + pestaña 'loops' del Sheet.")
-    print(f"copia de esta campaign: {os.path.relpath(resp, HERE)}")
-    print(f"siguiente paso: python3 verify.py --method loops <benchmarks>")
+    print(f"\nGuardado: {datos_csv}, {coef_csv} + pestaña 'bucles' del Sheet.")
+    print(f"copia de esta campana: {os.path.relpath(resp, HERE)}")
+    print(f"siguiente paso: python3 verificar.py --metodo bucles <benchmarks>")
 
 
-# --- method 2: regression con linea base fija ---------------------------------
+# --- metodo 2: regresion con linea base fija ---------------------------------
 
-# categorias del model y el contador que regresiona cada una (div va por ciclo)
+# categorias del modelo y el contador que regresiona cada una. div va por
+# INSTRUCCION (n_div), homogeneo con M1 (modelo B): antes iba por ciclo (c_div),
+# lo que le daba una tasa ~20x mayor y empujaba el modo comun/overhead hacia ctrl.
 DYN = ["alu", "mul", "mulh", "div", "mem", "ctrl", "fp_add", "fp_mul",
        "fp_fma", "fp_div", "fp_sqrt", "fp_noncomp", "fp_conv"]
-REGR = {"alu": "n_alu", "mul": "n_mul", "mulh": "n_mulh", "div": "c_div",
+REGR = {"alu": "n_alu", "mul": "n_mul", "mulh": "n_mulh", "div": "n_div",
         "mem": "n_mem", "ctrl": "n_ctrl", "fp_add": "n_fp_add",
         "fp_mul": "n_fp_mul", "fp_fma": "n_fp_fma", "fp_div": "n_fp_div",
         "fp_sqrt": "n_fp_sqrt", "fp_noncomp": "n_fp_noncomp",
         "fp_conv": "n_fp_conv"}
-DEFAULT_PROGS = ["memcpy", "fsm", "crc", "matmul", "mulhash64", "mulhscale",
-                 "dotprod", "gcd", "modpow", "trialdiv", "radix", "fpoly",
-                 "vecscale", "histogram", "sort",
-                 "wmac", "fir", "ratscale", "modmul",
-                 "memfill", "mulhstream"]
+# Kernels DOMINANTES por categoria: dan IDENTIFICABILIDAD a la regresion (rompen
+# la colinealidad). Corren a d100. dmem es SOLO-STORES (73% mem, alu bajo): rompe
+# la colinealidad mem-alu que hacia que efimon subvalue mem (absorbido por alu).
+# dalu NO se usa (alu ya domina en los mixtos y colgaba el JTAG por IPC alto).
+DOM = ["dmul", "dmulh", "ddiv", "dctrl"]
+# Sondas fp DOMINANTES (una por categoria fp). Estructura de M1: operandos
+# CONSTANTES en registros, sin loads dentro del bucle (el flw por elemento
+# deadlockeaba la FPU de este bitstream). Corren a d100. Cada una domina ~55% su
+# categoria -> identificable, ya NO se hereda de M1.
+FP_PROBES = ["fpadd", "fpmul", "fpfma", "fpdiv", "fpsqrt", "fpnoncomp", "fpconv"]
+# Programas MIXTOS: aportan el OVERHEAD inter-instruccion realista y el barrido de
+# intensidad (_d60/_d30) que ancla P_static. Ampliado con usuarios de mul/mulh/div
+# (mulhash64, mulhscale, mulhstream, fir, ratscale, modpow, trialdiv) para SUBIR
+# el soporte de esas categorias (antes 4-9/21 -> el diferencial las inflaba por
+# pocos puntos). Todos existen y tienen sus duty variants.
+MIXTOS = ["memcpy", "matmul", "dotprod", "gcd", "radix", "histogram", "sort",
+          "modmul", "memfill", "wmac",
+          "mulhash64", "mulhscale", "mulhstream", "fir", "ratscale",
+          "modpow", "trialdiv"]
+# mul/mulh/div (bajo soporte) llevan barrido de intensidad (_d60/_d30): 3 puntos
+# por categoria en vez de 1 -> ancla el reparto alfa+extra (dejaban de inflarse).
+# dctrl queda a d100: ctrl ya tiene soporte 21/21 (aparece en TODOS los programas)
+# y su duty fallaba (el asm de branches+calls no cuenta bien mcycle con CHUNKS).
+# Las sondas FP a d100 (su duty podria re-disparar el hazard de la FPU).
+D100_ONLY = set(FP_PROBES) | {"dctrl"}
+DEFAULT_PROGS = DOM + FP_PROBES + MIXTOS
 
 
 def cargar_pidle(fuente):
-    """fuente = 'loops' (lee P_idle de loops/coefficients.csv) o un numero en W."""
+    """fuente = 'bucles' (lee P_idle de bucles/coeficientes.csv) o un numero en W."""
     try:
         return float(fuente)
     except ValueError:
         pass
-    if fuente != "loops":
-        sys.exit(f"--pidle invalido: {fuente} (usa medir|loops o un numero en W)")
-    path = os.path.join(DIR_BUCLES, "coefficients.csv")
-    P_idle, _ = model.cargar_coefficients(path)
+    if fuente != "bucles":
+        sys.exit(f"--pidle invalido: {fuente} (usa medir|bucles o un numero en W)")
+    path = os.path.join(DIR_BUCLES, "coeficientes.csv")
+    P_idle, _ = modelo.cargar_coeficientes(path)
     if P_idle is None:
-        sys.exit(f"no encontre P_idle en {path}; caracteriza primero con 'loops'")
+        sys.exit(f"no encontre P_idle en {path}; caracteriza primero con 'bucles'")
     return P_idle
 
 
@@ -297,67 +330,84 @@ def _temp_f(s):
 
 
 def leer_datos(datos_csv):
-    """Lee de data.csv la ULTIMA campaign completa -> [(prog, P_med, T, cont,
-    temp)] (--refit). data.csv acumula TODAS las campaigns historicas: mezclar
-    campaigns en un re-ajuste da basura. Cada campaign empieza
+    """Lee de datos.csv la ULTIMA campana completa -> [(prog, P_med, T, cont,
+    temp)] (--refit). datos.csv acumula TODAS las campanas historicas: mezclar
+    campanas en un re-ajuste da basura. Cada campana empieza
     con su fila 'idle' (protocolo), asi que se toma desde el ultimo idle que
     encabece un bloque con >= DYN+1 corridas de calibracion."""
     todas = []
     with open(datos_csv) as f:
         for r in csv.DictReader(f):
-            cont = {k: int(r.get(k, 0)) for k in model.COLS_CONTADORES}
+            cont = {k: int(r.get(k, 0)) for k in modelo.COLS_CONTADORES}
             T = cont["mcycle"] / F_CLK
-            # mismo ajuste de ventana que measure_one: mcycle se congela en wfi
+            # mismo ajuste de ventana que medir_uno: mcycle se congela en wfi
             if r["programa"].endswith("_d60"):
                 T /= 0.60
             elif r["programa"].endswith("_d30"):
                 T /= 0.30
             todas.append((r["programa"], float(r["P_med_W"]), T,
                           cont, r.get("temp_C", "")))
-    campaigns = []
+    campanas = []
     for fila in todas:
-        if fila[0] == "idle" or not campaigns:
-            campaigns.append([])
-        campaigns[-1].append(fila)
-    completas = [c for c in campaigns
+        if fila[0] == "idle" or not campanas:
+            campanas.append([])
+        campanas[-1].append(fila)
+    completas = [c for c in campanas
                  if sum(1 for f in c if f[0] != "idle") >= len(DYN) + 1]
     if not completas:
-        sys.exit(f"{datos_csv}: ninguna campaign completa (idle + >={len(DYN)+1} corridas)")
+        sys.exit(f"{datos_csv}: ninguna campana completa (idle + >={len(DYN)+1} corridas)")
     mayor = max(len(c) for c in completas)
     if len(completas[-1]) < mayor:
-        print(f"[AVISO] la ultima campaign tiene {len(completas[-1])} corridas pero "
+        print(f"[AVISO] la ultima campana tiene {len(completas[-1])} corridas pero "
               f"hay una anterior con {mayor}: parece PARCIAL (abortada). El refit "
               f"usa la ultima igual; si no era la intencion, borra sus filas de "
-              f"data.csv o vuelve a medir.")
+              f"datos.csv o vuelve a medir.")
     return completas[-1]
+
+
+MIN_SUP = 1   # soporte minimo (programas base con la categoria activa) para que
+              # M2 la regresione; 0 => columna nula (singular) -> hereda M1. Cada
+              # categoria tiene su kernel DOMINANTE (dmul/dmulh/ddiv/dctrl + las 7
+              # fp*), asi que 1 programa fuertemente dominante ya la hace
+              # identificable. alu/mem no tienen dominante pero dominan en los
+              # mixtos (memcpy 65%, memfill 83%).
 
 
 def ajustar_efimon(cal_rows, idle_rows):
     """Ajuste al estilo EfiMon: NNLS CON INTERCEPTO sobre la potencia TOTAL.
     Requiere el barrido de intensidad (variantes _d60/_d30: misma composicion,
-    distinta utilizacion), que decorrelaciona el modo common de las categorias
+    distinta utilizacion), que decorrelaciona el modo comun de las categorias
     por diseno experimental. Las filas de idle (tasas 0) anclan el intercepto,
-    que hace el papel de P_static (ec. 5 de EfiMon)."""
+    que hace el papel de P_static (ec. 5 de EfiMon).
+
+    Solo regresiona las categorias IDENTIFICABLES (soporte >= MIN_SUP en los
+    programas base): una categoria que casi no aparece -o nunca- da una columna
+    (casi) nula que vuelve la matriz singular (cond -> 1e35) y NNLS reparte su
+    potencia de forma arbitraria, clavando categorias debiles en 0. Las no
+    identificables (tipicamente las fp, y a veces div) quedan fuera del ajuste y
+    se heredan de M1 aguas arriba. La columna de FETCH se OMITE aqui: en el set
+    de calibracion el footprint casi no varia (col. casi constante, colineal con
+    el intercepto) -> el termino de fetch lo aporta M1 (barrido), no M2."""
     from scipy.optimize import nnls
     rows = cal_rows + idle_rows
-    R = np.array([[r[3][REGR[c]] / r[2] if r[2] > 0 else 0.0 for c in DYN]
+    base = [r for r in cal_rows if not r[0].endswith(("_d60", "_d30"))]
+    cats = [c for c in DYN
+            if sum(1 for r in base if r[3][REGR[c]] > 0) >= MIN_SUP]
+    R = np.array([[r[3][REGR[c]] / r[2] if r[2] > 0 else 0.0 for c in cats]
                   for r in rows])
-    fcol = np.array([[r[3]["n_fetch"] * r[3]["mcycle"] / (r[2] * F_CLK)
-                      if r[2] > 0 else 0.0] for r in rows])
     y = np.array([r[1] for r in rows])
-    X = np.hstack([np.ones((len(y), 1)), R, fcol])
+    X = np.hstack([np.ones((len(y), 1)), R])
     sd = X.std(0); sd[0] = 1.0; sd[sd == 0] = 1.0
     e, _ = nnls(X / sd, y)
     e = e / sd
     P_static = e[0]
-    coefs = dict(zip(DYN, e[1:1 + len(DYN)]))
-    coefs["fetch"] = e[1 + len(DYN)]
+    coefs = dict(zip(cats, e[1:1 + len(cats)]))
     pred = X @ e
     resid = y - pred
     ss_res = float(resid @ resid)
     delta = y - P_static
     ss_tot = float(delta @ delta)
-    info = {"P_idle": P_static,
+    info = {"P_idle": P_static, "cats": cats,
             "r2": 1 - ss_res / ss_tot if ss_tot > 0 else float("nan"),
             "rmse": (ss_res / len(y)) ** 0.5,
             "cond": float(np.linalg.cond(X / sd)),
@@ -368,31 +418,50 @@ def ajustar_efimon(cal_rows, idle_rows):
 def ajustar_diferencial(rows, P_idle):
     """Regresion DIFERENCIAL no negativa (inspirada en EfiMon): separa la
     intensidad de la composicion. delta = alfa*r_total + sum extra_k * r_k,
-    con NNLS (coefficients >= 0). alfa = costo base por instruccion retirada
-    (modo common: fetch/pipeline); extra_k = sobrecosto de la categoria sobre
-    ese base. Evita que el modo common se vuelque en la columna de alu (la mas
-    correlacionada con la tasa total). Coeficientes absolutos guardados:
-    cat = alfa + extra; div por ciclo = extra_div; div_n = alfa (por instr)."""
+    con NNLS (coeficientes >= 0). alfa = costo base por instruccion retirada
+    (modo comun: fetch/pipeline/switching); extra_k = sobrecosto de la categoria
+    sobre ese base. A diferencia de efimon, el modo comun (el overhead
+    inter-instruccion) NO se vuelca en una sola categoria (ctrl) sino en alfa,
+    que se reparte sobre TODAS las instrucciones -> escala parejo con cualquier
+    mezcla y GENERALIZA (transfiere a benchmarks con otra composicion).
+    Coeficientes absolutos guardados: cat = alfa + extra; div por ciclo =
+    extra_div; div_n = alfa (por instr).
+
+    Solo mete en el ajuste las categorias IDENTIFICABLES (soporte >= MIN_SUP en
+    programas base): una columna (casi) nula -tipico de las fp que no se
+    ejecutan- vuelve el sistema singular (cond=inf). Las no identificables se
+    heredan de M1 aguas arriba."""
     from scipy.optimize import nnls
-    INSTR_CATS = ["alu", "mul", "mulh", "mem", "ctrl", "fp_add", "fp_mul",
-                  "fp_fma", "fp_div", "fp_sqrt", "fp_noncomp", "fp_conv"]
-    rtot = np.array([sum(r[3][REGR[c]] for c in INSTR_CATS) + r[3]["n_div"]
-                     for r in rows]) / np.array([r[2] for r in rows])
-    Rx = np.array([[r[3][REGR[c]] / r[2] for c in DYN if c != "alu"] for r in rows])
-    X = np.hstack([rtot[:, None], Rx])
+    base = [r for r in rows if not r[0].endswith(("_d60", "_d30"))]
+    cats = [c for c in DYN
+            if sum(1 for r in base if r[3][REGR[c]] > 0) >= MIN_SUP]
+    # r_total = tasa de instrucciones retiradas (todas por CONTEO, div incluido
+    # via n_div -> homogeneo). alfa*r_total = modo comun (overhead por instr).
+    Tn = np.array([r[2] for r in rows])
+    rtot = np.array([sum(r[3][REGR[c]] for c in cats) for r in rows]) / Tn
+    otras = [c for c in cats if c != "alu"]          # alu = alfa puro (sin extra)
+    Rx = np.array([[r[3][REGR[c]] / r[2] for c in otras] for r in rows])
+    # TERMINO DE STALL (Tiwari, 3.er termino): ciclos que NO retiran instruccion
+    # (latencia multi-ciclo de div/mulh/fp_div/fp_sqrt + burbujas de pipeline).
+    # Consumen potencia que el modelo por-instruccion (alfa+extra) ignora ->
+    # subvalua los programas de mucho stall. n_stall = mcycle - instr retiradas.
+    stall = np.array([r[3].get("n_stall", 0) / r[2] for r in rows])
+    X = np.hstack([rtot[:, None], Rx, stall[:, None]])
     delta = np.array([r[1] for r in rows]) - P_idle
     sd = X.std(0); sd[sd == 0] = 1.0
     e, _ = nnls(X / sd, delta)
     e = e / sd
     alfa = e[0]
-    extras = dict(zip([c for c in DYN if c != "alu"], e[1:]))
-    coefs = {"alu": alfa, "div": extras["div"], "div_n": alfa}
-    for c in INSTR_CATS[1:]:
+    extras = dict(zip(otras, e[1:1 + len(otras)]))
+    e_stall = e[-1]
+    coefs = {"alu": alfa}                             # energia POR INSTRUCCION
+    for c in otras:                                  # div incluido, uniforme
         coefs[c] = alfa + extras[c]
+    coefs["stall"] = e_stall                         # energia POR CICLO de stall
     pred = X @ e
     resid = delta - pred
     ss_res = float(resid @ resid); ss_tot = float(delta @ delta)
-    info = {"P_idle": P_idle, "alfa": alfa,
+    info = {"P_idle": P_idle, "alfa": alfa, "cats": cats, "e_stall": e_stall,
             "r2": 1 - ss_res / ss_tot if ss_tot > 0 else float("nan"),
             "rmse": (ss_res / len(delta)) ** 0.5,
             "cond": float(np.linalg.cond(X / sd)),
@@ -403,7 +472,7 @@ def ajustar_diferencial(rows, P_idle):
 def ajustar(rows, P_idle):
     """Regresion SIN intercepto con P_idle FIJO: delta = P_med - P_idle = R @ e.
     R[k,c] = contador_c / T (tasa). Se escalan las columnas (solo dividir por sd,
-    SIN centrar, para conservar el origen del model sin intercepto) y se resuelve
+    SIN centrar, para conservar el origen del modelo sin intercepto) y se resuelve
     por lstsq; luego se des-escala. Devuelve (coefs, info)."""
     R = np.array([[r[3][REGR[c]] / r[2] for c in DYN] for r in rows])
     delta = np.array([r[1] for r in rows]) - P_idle
@@ -426,12 +495,12 @@ def ajustar(rows, P_idle):
     return dict(zip(DYN, e)), info
 
 
-def measure_regression(progs, no_build, datos_csv):
-    """Corre cada programa por JTAG, recupera P_avg del Sheet, escribe data.csv."""
+def medir_regresion(progs, no_build, datos_csv):
+    """Corre cada programa por JTAG, recupera P_avg del Sheet, escribe datos.csv."""
     if not no_build:
         run_make(DIR_REGR)
     elfs = {p: find_elf(p, DIR_REGR) for p in progs}
-    header = ["fecha", "programa", "P_med_W", "T_s", "temp_C"] + model.COLS_CONTADORES
+    header = ["fecha", "programa", "P_med_W", "T_s", "temp_C"] + modelo.COLS_CONTADORES
     rotar_si_header_distinto(datos_csv, header)
     inbox = sheet.Inbox()
     rows = []
@@ -444,7 +513,7 @@ def measure_regression(progs, no_build, datos_csv):
         P_idle_ses = None                      # primera corrida idle de la sesion
         # ETA por CLASE de corrida: una variante _d30 tarda ~3x mas de reloj
         # que su version al 100% (misma actividad, estirada con pausas), asi
-        # que un promedio simple sub/sobre-estima segun el orden de la campaign
+        # que un promedio simple sub/sobre-estima segun el orden de la campana
         clase = lambda p: ("idle" if p == "idle" else
                            "d60" if p.endswith("_d60") else
                            "d30" if p.endswith("_d30") else "d100")
@@ -460,14 +529,14 @@ def measure_regression(progs, no_build, datos_csv):
                 eta = f"   [faltan ~{falta/60:.0f} min]"
             print(f"==> [{i:2d}/{len(progs)}] {prog:14s} ({duty}){eta}")
             t_run = time.time()
-            P_med, T, cont, tstr = measure_one(prog, elfs[prog], inbox)
+            P_med, T, cont, tstr = medir_uno(prog, elfs[prog], inbox)
             rows.append((prog, P_med, T, cont, tstr))
             ts = time.strftime("%Y-%m-%d %H:%M:%S")
             wr.writerow([ts, prog, f"{P_med:.6f}", f"{T:.6f}", tstr]
-                        + [cont[k] for k in model.COLS_CONTADORES])
+                        + [cont[k] for k in modelo.COLS_CONTADORES])
             fd.flush()
-            subir_sheet("regression", programa=prog, P_med_W=f"{P_med:.6f}", T_s=f"{T:.6f}",
-                        temp_C=tstr, **{k: cont[k] for k in model.COLS_CONTADORES})
+            subir_sheet("regresion", programa=prog, P_med_W=f"{P_med:.6f}", T_s=f"{T:.6f}",
+                        temp_C=tstr, **{k: cont[k] for k in modelo.COLS_CONTADORES})
             die = f"   die {tstr} C" if tstr else ""
             if prog == "idle":
                 P_idle_ses = P_med
@@ -478,20 +547,20 @@ def measure_regression(progs, no_build, datos_csv):
                 print(f"    P = {P_med:.4f} W{sobre}   ventana {T:5.1f} s{die}")
             dur.setdefault(clase(prog), []).append(time.time() - t_run + 3)
             time.sleep(3)
-    print(f"\nmeasurement campaign: {len(progs)} runs in "
+    print(f"\ncampana de medicion: {len(progs)} corridas en "
           f"{(time.time()-t0)/60:.0f} min")
     return rows
 
 
 def cmd_regresion(args):
-    datos_csv = os.path.join(DIR_REGR, "data.csv")
-    coef_csv = os.path.join(DIR_REGR, "coefficients.csv")
+    datos_csv = os.path.join(DIR_REGR, "datos.csv")
+    coef_csv = os.path.join(DIR_REGR, "coeficientes.csv")
 
     if args.refit:
         if not os.path.exists(datos_csv):
             sys.exit(f"no existe {datos_csv}; corre la medicion primero (sin --refit)")
         rows = leer_datos(datos_csv)
-        print(f"--refit: ultima campaign completa de data.csv "
+        print(f"--refit: ultima campana completa de datos.csv "
               f"({len(rows)} corridas, sin volver a medir)")
     else:
         progs = args.programas or DEFAULT_PROGS
@@ -499,39 +568,45 @@ def cmd_regresion(args):
             sys.exit(f"hacen falta >= {len(DYN)+1} programas mixtos (M > 7 incognitas); "
                      f"diste {len(progs)}")
         # con --pidle medir, idle.elf va PRIMERO en la misma sesion (mismo piso)
-        if args.model == "efimon":
-            progs = [v for q in progs for v in (q, q + "_d60", q + "_d30")]
-        run_list = (["idle"] + progs) if args.pidle == "measure" else progs
-        rows = measure_regression(run_list, args.no_build, datos_csv)
+        # Barrido de intensidad (efimon): expande a _d60/_d30 SOLO los mixtos.
+        # Los kernels DOMINANTES (d*) y las sondas fp corren a d100: aportan la
+        # SEPARACION de categorias (identificabilidad); el barrido de intensidad
+        # que ancla P_static lo dan los mixtos. Asi los dominantes/fp no necesitan
+        # variantes de duty (que requieren un pase de timing previo).
+        if args.modelo == "efimon":
+            progs = [v for q in progs
+                     for v in ([q] if q in D100_ONLY else (q, q + "_d60", q + "_d30"))]
+        run_list = (["idle"] + progs) if args.pidle == "medir" else progs
+        rows = medir_regresion(run_list, args.no_build, datos_csv)
 
     # separa la corrida de referencia (idle) de las de calibracion
     cal_rows = [r for r in rows if r[0] != "idle"]
     idle_rows = [r for r in rows if r[0] == "idle"]
-    if args.pidle == "measure":
+    if args.pidle == "medir":
         if not idle_rows:
-            sys.exit("--pidle medir pero no hay corrida 'idle' (mide sin --refit, o usa --pidle loops)")
+            sys.exit("--pidle medir pero no hay corrida 'idle' (mide sin --refit, o usa --pidle bucles)")
         P_idle = idle_rows[-1][1]
         T_idle = _temp_f(idle_rows[-1][4]) if len(idle_rows[-1]) > 4 else None
         fuente = f"idle medido en sesion ({P_idle:.4f} W)"
     else:
         P_idle = cargar_pidle(args.pidle)
-        # si viene de loops, hereda su T_idle; si es un numero suelto, no hay
-        T_idle = model.ultimo_T_idle if args.pidle == "loops" else None
+        # si viene de bucles, hereda su T_idle; si es un numero suelto, no hay
+        T_idle = modelo.ultimo_T_idle if args.pidle == "bucles" else None
         fuente = args.pidle
 
     if len(cal_rows) < len(DYN) + 1:
         sys.exit(f"solo {len(cal_rows)} programas de calibracion; hacen falta >= {len(DYN)+1}")
 
-    print(f"\n=== ajuste M2 [model {args.model}] ===")
-    if args.model == "efimon":
+    print(f"\n=== ajuste M2 [modelo {args.modelo}] ===")
+    if args.modelo == "efimon":
         if not idle_rows:
-            sys.exit("--model efimon necesita la corrida de idle en sesion (--pidle medir)")
+            sys.exit("--modelo efimon necesita la corrida de idle en sesion (--pidle medir)")
         coefs, info = ajustar_efimon(cal_rows, idle_rows)
         dif = (info["P_idle"] - P_idle) * 1e3
         print(f"P_static (intercepto ajustado) = {info['P_idle']:.4f} W   "
               f"(idle medido {P_idle:.4f} W, diferencia {dif:+.1f} mW)")
         P_idle = info["P_idle"]
-    elif args.model == "diferencial":
+    elif args.modelo == "diferencial":
         coefs, info = ajustar_diferencial(cal_rows, P_idle)
         print(f"alfa (costo base por instruccion) = {info['alfa']*1e9:.3f} nJ   "
               f"P_idle = {P_idle:.4f} W (fijo, de '{fuente}')")
@@ -539,13 +614,38 @@ def cmd_regresion(args):
         coefs, info = ajustar(cal_rows, P_idle)
         print(f"P_idle = {P_idle:.4f} W (fijo, de '{fuente}'; sin intercepto)")
 
+    # Hibrido M2+M1: las categorias que M2 (efimon/diferencial) NO puede
+    # identificar (soporte < MIN_SUP: tipicamente las fp que no se ejecutan y a
+    # veces div) se HEREDAN de M1 (bucles dominados, que si las midio aisladas).
+    # Igual el termino de fetch (M2 lo omite: footprint casi constante en la
+    # calibracion). Asi la matriz de M2 no queda singular por columnas nulas.
+    info["heredadas"] = []
+    if args.modelo in ("efimon", "diferencial"):
+        m1_path = os.path.join(DIR_BUCLES, "coeficientes.csv")
+        if os.path.exists(m1_path):
+            _, m1 = modelo.cargar_coeficientes(m1_path)
+            for c in DYN:
+                if c not in coefs:
+                    coefs[c] = m1.get(c, 0.0)
+                    info["heredadas"].append(c)
+            if "fetch" in m1:
+                coefs["fetch"] = m1["fetch"]
+        else:
+            for c in DYN:
+                coefs.setdefault(c, 0.0)
+            print(f"  [AVISO] no hay M1 en {m1_path}; categorias no "
+                  f"identificables quedan en 0")
+        print(f"  M2 regresiona {len(info['cats'])} categorias "
+              f"({', '.join(info['cats'])}); "
+              f"hereda de M1: {', '.join(info['heredadas']) or '(ninguna)'}")
+
     with open(coef_csv, "w", newline="") as f:
         wc = csv.writer(f)
         desc = {"clasico": f"linea base FIJA de '{fuente}', SIN intercepto",
                 "diferencial": "NNLS diferencial (alfa*r_total + sobrecostos)",
                 "efimon": "NNLS CON INTERCEPTO ajustado (P_idle = P_static de la"
-                          " regression; barrido de intensidad d100/d60/d30)"}[args.model]
-        wc.writerow([f"# Regresion (M2, model {args.model}). Generado {time.strftime('%Y-%m-%d %H:%M:%S')}."
+                          " regresion; barrido de intensidad d100/d60/d30)"}[args.modelo]
+        wc.writerow([f"# Regresion (M2, modelo {args.modelo}). Generado {time.strftime('%Y-%m-%d %H:%M:%S')}."
                      f" {desc}. n={len(cal_rows)} corridas,"
                      f" R2={info['r2']:.4f}, RMSE={info['rmse']*1e3:.2f} mW, cond={info['cond']:.1f}"])
         wc.writerow(["parametro", "coef", "unidad"])
@@ -553,27 +653,27 @@ def cmd_regresion(args):
         if T_idle is not None:
             wc.writerow(["T_idle", f"{T_idle:.2f}", "C"])
         for c in DYN:
-            unidad = "J/ciclo" if c == "div" else "J/instr"
-            wc.writerow([c, f"{coefs[c]:.6e}", unidad])
-        if "div_n" in coefs:
-            wc.writerow(["div_n", f"{coefs['div_n']:.6e}", "J/instr"])
+            wc.writerow([c, f"{coefs[c]:.6e}", "J/instr"])   # todo por instruccion (div: n_div)
+        if "stall" in coefs:
+            wc.writerow(["stall", f"{coefs['stall']:.6e}", "J/ciclo"])  # ciclos sin retiro
         if "fetch" in coefs:
-            wc.writerow(["fetch", f"{coefs['fetch']:.6e}", "W/byte"])
+            wc.writerow(["fetch", f"{coefs['fetch']:.6e}", "W/byte"])  # potencia de fetch ~ footprint
 
     print(f"{len(cal_rows)} corridas de calibracion"
-          + (f" + {len(idle_rows)} idle" if args.model == "efimon" and idle_rows else "")
+          + (f" + {len(idle_rows)} idle" if args.modelo == "efimon" and idle_rows else "")
           + f":  R2={info['r2']:.4f}  RMSE={info['rmse']*1e3:.2f} mW  "
             f"cond={info['cond']:.1f}")
 
     # soporte = en cuantos programas base (sin variantes de intensidad) la
     # categoria esta activa: con soporte bajo el coeficiente es fragil
     base = [r for r in cal_rows if not r[0].endswith(("_d60", "_d30"))]
-    print(f"\n{'categoria':10s} {'coef[nJ]':>9s}  unidad     soporte")
+    heredadas = set(info.get("heredadas", []))
+    print(f"\n{'categoria':10s} {'coef[nJ]':>9s}  unidad     soporte     fuente")
     for c in DYN:
-        unidad = "nJ/ciclo" if c == "div" else "nJ/instr"
         sop = sum(1 for r in base if r[3][REGR[c]] > 0)
-        flag = "   <-- NEGATIVO (soporte debil / anti-correlacion)" if coefs[c] < 0 else ""
-        print(f"{c:10s} {coefs[c]*1e9:9.3f}  {unidad:9s} {sop:2d}/{len(base)} programas{flag}")
+        src = "M1 (heredado)" if c in heredadas else "M2"
+        flag = "   <-- NEGATIVO" if coefs[c] < 0 else ""
+        print(f"{c:10s} {coefs[c]*1e9:9.3f}  {'nJ/instr':9s} {sop:2d}/{len(base)} prog   {src}{flag}")
     if "fetch" in coefs:
         rngs = [r[3]["n_fetch"] for r in base if r[3].get("n_fetch", 0) > 0]
         span = f"{min(rngs)}..{max(rngs)} B" if rngs else "-"
@@ -592,8 +692,8 @@ def cmd_regresion(args):
           f"({(peor[0][1]-peor[1])*1e3:+.2f} mW = {100*(peor[0][1]-peor[1])/peor[0][1]:+.3f}%)")
     resp = respaldar_coef(coef_csv)
     print(f"Guardado: {coef_csv}")
-    print(f"copia de esta campaign: {os.path.relpath(resp, HERE)}")
-    print("siguiente paso: python3 verify.py --method regression <benchmarks>")
+    print(f"copia de esta campana: {os.path.relpath(resp, HERE)}")
+    print("siguiente paso: python3 verificar.py --metodo regresion <benchmarks>")
 
 
 # --- entrada ------------------------------------------------------------------
@@ -601,28 +701,28 @@ def cmd_regresion(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest="method", required=True)
+    sub = ap.add_subparsers(dest="metodo", required=True)
 
-    ab = sub.add_parser("loops", aliases=["1"], help="M1: loops dominados por categoria")
+    ab = sub.add_parser("bucles", aliases=["1"], help="M1: bucles dominados por categoria")
     ab.add_argument("categorias", nargs="*", default=CATS,
                     help="categorias a medir; si se omite mide idle+7 categorias")
     ab.add_argument("--repeats", "--repeat", type=int, default=1)
     ab.add_argument("--no-build", action="store_true", help="no recompilar ELF antes de medir")
     ab.set_defaults(fn=cmd_bucles)
 
-    ar = sub.add_parser("regression", aliases=["2"], help="M2: regression sobre programas mixtos")
+    ar = sub.add_parser("regresion", aliases=["2"], help="M2: regresion sobre programas mixtos")
     ar.add_argument("programas", nargs="*", default=DEFAULT_PROGS,
                     help="conjunto de calibracion; si se omite usa el por defecto")
-    ar.add_argument("--model", default="efimon", choices=["clasico", "diferencial", "efimon"],
+    ar.add_argument("--modelo", default="efimon", choices=["clasico", "diferencial", "efimon"],
                     help="ajuste: 'clasico' (tasas por categoria, lstsq) o "
                          "'diferencial' (alfa*r_total + sobrecostos, NNLS) o "
                          "'efimon' (NNLS con intercepto + barrido de intensidad "
                          "_d60/_d30; corre 3 variantes por programa)")
-    ar.add_argument("--pidle", default="measure",
-                    help="P_idle FIJO: 'measure' (corre idle.elf en ESTA sesion, default), "
-                         "'loops' (de su coefficients.csv) o un numero en W")
+    ar.add_argument("--pidle", default="medir",
+                    help="P_idle FIJO: 'medir' (corre idle.elf en ESTA sesion, default), "
+                         "'bucles' (de su coeficientes.csv) o un numero en W")
     ar.add_argument("--refit", action="store_true",
-                    help="NO mide: re-ajusta desde data.csv (para reusar mediciones ya hechas)")
+                    help="NO mide: re-ajusta desde datos.csv (para reusar mediciones ya hechas)")
     ar.add_argument("--no-build", action="store_true", help="no recompilar ELF antes de medir")
     ar.set_defaults(fn=cmd_regresion)
 

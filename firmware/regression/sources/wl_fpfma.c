@@ -1,12 +1,30 @@
+/* DOMINANTE fp_fma: estructura de M1 (operandos CONSTANTES en registros, sin
+ * loads dentro del bucle, resultado descartado). fmadd.s. */
 #ifndef REPS
 #define REPS 40
 #endif
-#define N 128
-static float X[N],Y[N],Z[N]; static int init=0;
-static void setup(void){ if(!init){ for(int i=0;i<N;i++){X[i]=1.0f+i*0.5f; Y[i]=2.0f+i*0.25f; Z[i]=0.5f+i*0.125f;} init=1; } }
-/* dominado por fp_fma (+ fp_mul + fp_add). RIESGO: cadena fmadd */
-void run_workload(void){ setup(); volatile float sink=0;
-  for(int r=0;r<REPS;r++){ float k=(float)(r|1)*1e-3f;
-    for(int i=0;i<N;i++){ float a=__builtin_fmaf(X[i],Y[i],k);
-      float b=__builtin_fmaf(Y[i],Z[i],k); float c=X[i]*Z[i];
-      sink+=a+b+c; } } (void)sink; }
+void run_workload(void){
+  volatile int sink=0;
+  float a=1.5f, b=2.25f, c=0.75f, d=3.125f;
+  for(int r=0;r<REPS;r++){
+    float j;
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(a),"f"(b),"f"(c));  /* 16 fmadd, operandos constantes */
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(b),"f"(c),"f"(d));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(c),"f"(d),"f"(a));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(d),"f"(a),"f"(b));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(a),"f"(c),"f"(b));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(b),"f"(d),"f"(c));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(c),"f"(a),"f"(d));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(d),"f"(b),"f"(a));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(a),"f"(b),"f"(d));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(b),"f"(c),"f"(a));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(c),"f"(d),"f"(b));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(d),"f"(a),"f"(c));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(a),"f"(d),"f"(c));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(b),"f"(a),"f"(d));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(c),"f"(b),"f"(a));
+    asm volatile("fmadd.s %0,%1,%2,%3":"=f"(j):"f"(d),"f"(c),"f"(b));
+    sink+=r;
+  }
+  (void)sink;
+}

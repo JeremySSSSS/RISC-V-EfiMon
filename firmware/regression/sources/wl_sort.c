@@ -1,5 +1,5 @@
 /* SORT: insertion sort — mezcla MEM (arreglo) + ALU (comparaciones/indices)
- * + CTRL (saltos de los loops anidados). */
+ * + CTRL (saltos de los bucles anidados). */
 #ifndef REPS
 #define REPS 20000
 #endif

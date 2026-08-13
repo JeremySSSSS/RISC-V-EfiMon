@@ -15,13 +15,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "comun"))
 os.environ.setdefault("GDB_TIMEOUT", "30")   # cuelgue -> falla en 30s
 import jtag      # noqa: E402
-import model as modelo    # noqa: E402
+import modelo    # noqa: E402
 
-BASE = ["memcpy", "fsm", "crc", "matmul", "mulhash64", "mulhscale", "dotprod",
-        "gcd", "modpow", "trialdiv", "radix", "fpoly", "vecscale", "histogram",
-        "sort", "wmac", "fir", "ratscale", "modmul", "memfill", "mulhstream"]
+# set de calibracion M2 actual: dominantes (enteros + fp) + mixtos
+BASE = ["dmul", "dmulh", "ddiv", "dctrl", "fpadd", "fpmul", "fpfma", "fpdiv", "fpsqrt", "fpnoncomp", "fpconv", "memcpy", "matmul", "dotprod", "gcd", "radix", "histogram", "sort", "modmul", "memfill", "wmac", "mulhash64", "mulhscale", "mulhstream", "fir", "ratscale", "modpow", "trialdiv"]
 FP = ["fpadd", "fpmul", "fpfma", "fpdiv", "fpsqrt", "fpnoncomp", "fpconv"]
-DIR_ELF = os.path.join(HERE, "regression", "elf")
+DIR_ELF = os.path.join(HERE, "regresion", "elf")
 
 
 def test(prog):
@@ -45,6 +44,15 @@ def test(prog):
 
 
 def main():
+    # nombres sueltos en la linea de comando -> corre SOLO esos (p.ej.
+    # 'test_m2.py fpadd fpdiv' para probar 2 sondas sin los 21 enteros)
+    explicitos = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if explicitos:
+        progs = explicitos
+        print(f"=== smoke-test M2: SOLO {len(progs)} pedidos "
+              f"(GDB_TIMEOUT={os.environ['GDB_TIMEOUT']}s) ===\n")
+        _run(progs)
+        return
     progs = list(BASE)
     if "--fp" in sys.argv:
         progs += FP
@@ -57,6 +65,10 @@ def main():
         progs += extra
 
     print(f"=== smoke-test M2: {len(progs)} programas (GDB_TIMEOUT={os.environ['GDB_TIMEOUT']}s) ===\n")
+    _run(progs)
+
+
+def _run(progs):
     ok = mal = 0
     malos = []
     for p in progs:

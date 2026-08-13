@@ -1,4 +1,4 @@
-/* Wrapper common para los kernels de BEEBS: adapta su interfaz estandar
+/* Wrapper comun para los kernels de BEEBS: adapta su interfaz estandar
  * (initialise_benchmark / benchmark / verify_benchmark) al run_workload()
  * que espera el harness del banco, y provee los stubs de libc que algunos
  * kernels referencian (printf de depuracion, strlen). El kernel se compila

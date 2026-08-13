@@ -1,13 +1,31 @@
+/* DOMINANTE fp_conv: estructura de M1 (operandos CONSTANTES en registros, sin
+ * loads dentro del bucle, resultado descartado). fcvt.w.s / fcvt.s.w (int<->float). */
 #ifndef REPS
 #define REPS 40
 #endif
-#define N 128
-static float X[N],Y[N],Z[N]; static int init=0;
-static void setup(void){ if(!init){ for(int i=0;i<N;i++){X[i]=1.0f+i*0.5f; Y[i]=2.0f+i*0.25f; Z[i]=0.5f+i*0.125f;} init=1; } }
-/* combinado dominado por fp_conv (+ fp_add + fp_mul) */
-void run_workload(void){ setup(); volatile float sink=0; volatile int isink=0;
-  for(int r=0;r<REPS;r++){ float k=(float)(r|1);
-    for(int i=0;i<N;i++){ int a=(int)(X[i]+k); float af=(float)a;    /* fp_conv */
-      int b=(int)Y[i]; float bf=(float)b;                           /* fp_conv */
-      float p=Z[i]*bf;                                              /* fp_mul */
-      sink+=af+bf+p; isink+=a+b; } } (void)sink;(void)isink; }      /* fp_add */
+void run_workload(void){
+  volatile int sink=0;
+  float a=1.5f, b=2.25f, c=0.75f, d=3.125f;
+  int p=3, q=7, s=11, t=17;
+  for(int r=0;r<REPS;r++){
+    float fj; int ij;
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(a));  /* 16 fcvt, operandos constantes (int<->float) */
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(p));
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(b));
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(q));
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(c));
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(s));
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(d));
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(t));
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(a));
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(p));
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(b));
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(q));
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(c));
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(s));
+    asm volatile("fcvt.w.s %0,%1":"=r"(ij):"f"(d));
+    asm volatile("fcvt.s.w %0,%1":"=f"(fj):"r"(t));
+    sink+=r+ij;
+  }
+  (void)sink;
+}

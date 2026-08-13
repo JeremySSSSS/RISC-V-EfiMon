@@ -22,10 +22,10 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FUENTES = os.path.join(HERE, "loops", "fuentes")
-ELF = os.path.join(HERE, "loops", "elf", "ctrl.elf")
-DATOS = os.path.join(HERE, "loops", "datos.csv")
-CHARACTERIZE = os.path.join(HERE, "characterize.py")
+FUENTES = os.path.join(HERE, "bucles", "fuentes")
+ELF = os.path.join(HERE, "bucles", "elf", "ctrl.elf")
+DATOS = os.path.join(HERE, "bucles", "datos.csv")
+CARACTERIZAR = os.path.join(HERE, "caracterizar.py")
 
 CATS = ["n_alu", "n_mul", "n_mulh", "n_div", "n_mem", "n_ctrl", "n_fp_add",
         "n_fp_mul", "n_fp_fma", "n_fp_div", "n_fp_sqrt", "n_fp_noncomp", "n_fp_conv"]
@@ -38,7 +38,7 @@ def build(kb, lc):
 
 
 def medir():
-    subprocess.run([sys.executable, CHARACTERIZE, "loops", "ctrl", "--no-build"],
+    subprocess.run([sys.executable, CARACTERIZAR, "bucles", "ctrl", "--no-build"],
                    cwd=HERE, check=True)
 
 
@@ -98,8 +98,8 @@ def main():
     args = ap.parse_args()
     kbs = [int(x) for x in args.kb.split(",")]
 
-    if not os.path.exists(CHARACTERIZE):
-        sys.exit(f"no encuentro {CHARACTERIZE}")
+    if not os.path.exists(CARACTERIZAR):
+        sys.exit(f"no encuentro {CARACTERIZAR}")
 
     # asegura idle.elf al dia (el barrido corre caracterizar con --no-build)
     subprocess.run(["make", "-B", "../elf/idle.elf"], cwd=FUENTES, check=True)
@@ -123,14 +123,18 @@ def main():
         print(f"{p['kb']:>4} {p['coef_nJ']:9.2f} {p['rng']:9d} "
               f"{p['cic_ctrl']:8.2f} {p['dP_mW']:7.1f} {p['ctrl_pct']:5.1f}")
 
-    # ajuste e_ctrl vs (n_fetch/n_ctrl)
     rng = [p["rng"] for p in pts]
+    # e_flush = intercepto de coef[nJ] vs rango (ctrl base sin fetch)
     a, _, r2c = ajuste(rng, [p["coef_nJ"] for p in pts])
+    # e_fetch = pendiente de dP[W] vs rango[byte]  (DIRECTO: dP = base + e_fetch*rango)
     off, e_fetch, r2f = ajuste(rng, [p["dP_mW"] / 1e3 for p in pts])
-    print("\n--- Tiwari decomposition (ctrl = flush + fetch) ---")
+    print("\n--- descomposicion de Tiwari (ctrl = flush + fetch) ---")
     print(f"  e_flush (ctrl base) = {a:.3f} nJ/instr        R2={r2c:.3f}")
     print(f"  e_fetch             = {e_fetch*1e9:.3f} nW/byte   R2={r2f:.3f}")
-    coef_csv = os.path.join(HERE, "loops", "coefficients.csv")
+
+    # escribe ctrl(flush) y fetch en el coef de M1 (bucles), preservando el resto.
+    # (el barrido dejo ctrl inflado con el ultimo footprint -> aca se corrige)
+    coef_csv = os.path.join(HERE, "bucles", "coeficientes.csv")
     if os.path.exists(coef_csv):
         lines = list(csv.reader(open(coef_csv)))
         def setrow(name, val, unit):
@@ -138,13 +142,14 @@ def main():
                 if r and r[0] == name:
                     r[1] = f"{val:.6e}"; r[2] = unit; return
             lines.append([name, f"{val:.6e}", unit])
-        setrow("ctrl", a * 1e-9, "J/instr")
-        setrow("fetch", e_fetch, "W/byte")
+        setrow("ctrl", a * 1e-9, "J/instr")      # flush puro
+        setrow("fetch", e_fetch, "W/byte")       # potencia de fetch ~ footprint
         with open(coef_csv, "w", newline="") as f:
             csv.writer(f).writerows(lines)
-        print(f"  -> wrote to {os.path.relpath(coef_csv, HERE)}: ctrl={a:.3f} nJ + fetch={e_fetch*1e9:.3f} nW/byte")
+        print(f"  -> escrito en {os.path.relpath(coef_csv, HERE)}: "
+              f"ctrl={a:.3f} nJ (flush) + fetch={e_fetch*1e9:.3f} nW/byte")
 
-    out = os.path.join(HERE, "sweep_fetch.csv")
+    out = os.path.join(HERE, "barrido_fetch.csv")
     with open(out, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["kb", "coef_nJ", "rango_bytes", "cic_ctrl",

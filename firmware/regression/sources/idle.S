@@ -5,9 +5,11 @@
 #include "platform.inc"
 
 #ifndef IDLE_REPS
-#define IDLE_REPS  1       // 1000 x 0.3 s ~ 5 min (como m1)
+#define IDLE_REPS  1000       // 1000 x 0.3 s ~ 5 min (como m1)
 #endif
-#define IDLE_TICKS 400000000
+#ifndef IDLE_TICKS
+#define IDLE_TICKS 3000000    // se puede pisar con -DIDLE_TICKS (el Makefile usa 400M = 40 s)
+#endif
 
 .section .text.start
 .globl _start
