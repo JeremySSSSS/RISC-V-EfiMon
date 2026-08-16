@@ -8,7 +8,17 @@
  *
  *   Escritura:  ?hoja=<nombre>&<col>=<valor>&...      -> agrega una fila
  *   Lectura:    ?hoja=<nombre>&accion=leer            -> devuelve CSV
+ *
+ * PODA: la pestaña 'inbox' (buffer transitorio de ventanas del ESP32) se recorta
+ * sola a las ultimas INBOX_MAX filas. Sin esto crecia sin limite y getDataRange()
+ * se pasaba del timeout (y Sheets no podia ni abrir la hoja). Solo se poda 'inbox';
+ * 'verificacion' y demas pestañas de resultados NO se tocan.
  */
+var INBOX_MAX  = 300;  // filas de datos objetivo en 'inbox' tras podar
+var INBOX_TRIG = 400;  // recien poda cuando pasa de esto (histeresis): asi ~99%
+                       // de las escrituras NO borran filas -> casi no hay
+                       // lectura-durante-poda (la carrera que dejaba p_avg vacio)
+
 function doGet(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = e.parameter.hoja || "inbox";
@@ -45,5 +55,26 @@ function doGet(e) {
       if (k === "fecha") return params.fecha;
       return params.hasOwnProperty(k) ? num(params[k]) : "";
     }));
+
+    // PODA solo del inbox, con HISTERESIS: recien cuando pasa de INBOX_TRIG
+    // filas, borra de golpe hasta dejar INBOX_MAX. Asi la mayoria de las
+    // escrituras no tocan filas (menos lectura-durante-poda).
+    if (hoja === "inbox" && sh.getLastRow() - 1 > INBOX_TRIG) {
+      var sobran = sh.getLastRow() - 1 - INBOX_MAX;    // -1 por el encabezado
+      if (sobran > 0) sh.deleteRows(2, sobran);         // borra desde la fila 2
+    }
     return ContentService.createTextOutput("OK");
   }
+
+/* Vaciar el inbox a mano (correr desde el editor si alguna vez se llena de nuevo,
+ * o para limpiar una hoja vieja sin abrir la grilla). Conserva el encabezado. */
+function limpiarInbox() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName("inbox");
+  if (!sh) return;
+  var ncol = Math.max(sh.getLastColumn(), 1);
+  var enc = sh.getRange(1, 1, 1, ncol).getValues();
+  sh.clearContents();
+  sh.getRange(1, 1, 1, ncol).setValues(enc);
+  SpreadsheetApp.flush();
+}

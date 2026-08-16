@@ -18,18 +18,19 @@ BENCH_FP  :=
 # verify -> run_workload). REPS apunta a ventanas de ~15-35 s a 10 MHz;
 # ajustar tras la primera corrida si la ventana queda corta o larga.
 BENCH_BEEBS := mont64 ud jfdctint nettleaes strsearch huffbench levenshtein ns aqsort
-# Validacion held-out float. Solo la unidad ADDMUL/CONV de la FPU de este bitstream
-# tolera DATO FRESCO (operando recien producido por fcvt/otra op FP): fadd, fmul,
-# fmadd, fcvt. Con eso:
-#   gray -> fp_mul + fp_add (+ fp_conv en todo, via fcvt)
-#   ffma -> fp_fma  (y=GAIN*x+OFFSET, GAIN/OFFSET constantes, x fresco; 4.5s, err<0.05%)
-# La unidad DIVSQRT (fdiv, fsqrt) y NONCOMP (fmax/fmin/fsgnj/cmp) SOLO funcionan con
-# operandos CONSTANTES en registro (la forma de los probes de M2): cualquier input
-# FRESCO las deadlockea, aunque el resultado se descarte (verificado: fmag con fsqrt
-# de fcvt y resultado sin leer COLGO). Por eso fp_div/fp_sqrt/fp_noncomp NO admiten
-# benchmark real held-out en este HW; quedan validadas solo via sus probes de M2.
-# fmag (fp_sqrt), fratio (fp_div), flim (fp_noncomp) RETIRADOS por esto; .c como ref.
-BENCH_C_FP := gray ffma
+# Validacion held-out float, 6 categorias fp cubiertas:
+#   gray   -> fp_mul + fp_add          ffma  -> fp_fma
+#   fmag   -> fp_sqrt                   fratio-> fp_div       flim -> fp_noncomp
+#   (fp_conv en todas, via fcvt)
+# Restriccion de la FPU de este bitstream (ver memoria fpu_fmadd_restriccion):
+#   - ADDMUL/CONV (fadd/fmul/fmadd/fcvt) toleran DATO FRESCO -> gray/ffma usan datos.
+#   - DIVSQRT (fdiv/fsqrt) y NONCOMP (fmax/fmin/fsgnj) SOLO con operandos CONSTANTES
+#     en registro; cualquier input fresco las deadlockea (fmag/fratio/flim viejos con
+#     fcvt->op colgaban). Solucion: las ops fp operan sobre constantes hoisteadas (0
+#     flw en el loop, patron del probe), envueltas en trabajo ENTERO real y variable
+#     -> carga MIXTA held-out distinta del probe de calibracion. Corren OK:
+#     fmag IPC 0.18 / fratio 0.26 (multi-ciclo, ejercitan el stall de M2) / flim 0.84.
+BENCH_C_FP := gray ffma fmag fratio flim
 # Cargas reales que ejercitan mulh/div (validacion held-out): modexp (Montgomery),
 # bigdiv (division larga), ratapprox (fracciones continuas). run_workload en C.
 BENCH_MULHDIV := modexp bigdiv ratapprox
@@ -92,12 +93,13 @@ gray.elf fmag.elf fratio.elf flim.elf ffma.elf: ARCH := rv32imfc
 gray.elf fmag.elf fratio.elf flim.elf ffma.elf: KFLAGS += -ffp-contract=off
 # ffma: fp_fma via __builtin_fmaf explicito. y = GAIN*x + OFFSET con GAIN/OFFSET
 # CONSTANTES en registros (como el probe fpfma que SI corrio), solo x fresco.
-# REPS por benchmark fp (~12 s a 10 MHz). fmag/fratio son multi-ciclo (fsqrt/fdiv)
-# -> pocas REPS bastan; flim/ffma son rapidos -> mas REPS. Ajustar tras el 1er pase.
-fmag.elf:   KFLAGS += -DREPS=8000
-fratio.elf: KFLAGS += -DREPS=9000
-flim.elf:   KFLAGS += -DREPS=4000
-ffma.elf:   KFLAGS += -DREPS=8000
+# REPS por benchmark fp -> ventana ~30 s a 10 MHz (ventanas largas = P_avg del ESP32
+# menos ruidoso, mas muestras promediadas). fmag/fratio son multi-ciclo (fsqrt/fdiv,
+# IPC bajo) -> menos REPS para igual tiempo; flim/ffma son rapidos -> mas REPS.
+fmag.elf:   KFLAGS += -DREPS=6900
+fratio.elf: KFLAGS += -DREPS=9300
+flim.elf:   KFLAGS += -DREPS=31000
+ffma.elf:   KFLAGS += -DREPS=53000
 
 .PHONY: all clean
 all: $(ELFS)

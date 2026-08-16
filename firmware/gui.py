@@ -149,7 +149,10 @@ def cmd_de(req):
         cmd = PY + ["caracterizar.py", "regresion", "--modelo", model] + progs
         if req.get("nobuild"):
             cmd.append("--no-build")
-        return en_campanas(f"M2 regression [{model}]", cmd, req)
+        if req.get("duty"):
+            cmd.append("--duty")
+        suf = " +duty" if req.get("duty") else ""
+        return en_campanas(f"M2 regression [{model}]{suf}", cmd, req)
     if a == "verificar":
         progs = [p for p in req.get("progs", []) if p in benchmarks()]
         if not progs:
@@ -168,8 +171,13 @@ def cmd_de(req):
         cmd = PY + ["test_m2.py"] + (["--duty"] if req.get("duty") else [])
         return ("Probar M2 (smoke-test)", [cmd])
     if a == "promediar":
-        n = min(max(int(req.get("n", 3)), 2), 20)
-        return (f"Promediar {n} tandas", [PY + ["promediar_tandas.py", "--n", str(n)]])
+        n = min(max(int(req.get("n", 3)), 2), 30)
+        met = req.get("metodo", "bucles")
+        if met not in ("bucles", "regresion"):
+            met = "bucles"
+        lbl = "M1" if met == "bucles" else "M2"
+        return (f"Promediar {n} tandas {lbl}",
+                [PY + ["promediar_tandas.py", "--metodo", met, "--n", str(n)]])
     if a == "m1full":
         cats = [c for c in req.get("cats", []) if c in CATS] or CATS
         m1 = PY + ["caracterizar.py", "bucles"] + cats
@@ -222,6 +230,7 @@ def _leer_coef(path, m1_ref=None):
          "escala": round(coef["escala"], 4) if "escala" in coef else None,
          "fetch_nWb": round(coef["fetch"] * 1e9, 3) if "fetch" in coef else None,
          "stall_nJ": round(coef["stall"] * 1e9, 3) if "stall" in coef else None,
+         "b0_W": round(coef["b0"], 6) if "b0" in coef else None,
          "heredadas": []}
     if m1_ref:
         d["heredadas"] = [k for k in CATS if k in coef and k in m1_ref
@@ -340,6 +349,10 @@ def estado():
         est["mix"] = _instr_mix()
     except Exception as e:
         est["mix"] = {"error": str(e)}
+    try:
+        est["vmix"] = _instr_mix_val()
+    except Exception as e:
+        est["vmix"] = {"error": str(e)}
     return est
 
 
@@ -376,6 +389,38 @@ def _instr_mix():
         row.update({c: round(100 * ns[c] / tot) for c in _MIX_CATS})
         out.append(row)
     return {"cats": _MIX_CATS, "rows": out}
+
+
+def _instr_mix_val():
+    """Instruction-mix (% per category) of each VALIDATION benchmark, from the
+    latest validation batch. Counters are deterministic, so one row per program
+    (first occurrence) is enough. Same categories/format as _instr_mix so the
+    Validate tab reuses the M2 mix table."""
+    d = os.path.join(HERE, "validaciones")
+    fs = glob.glob(os.path.join(d, "validacion_bucles_medir_*.csv"))
+    if _VAL_BATCH_START is not None:
+        fs = [f for f in fs if os.path.getmtime(f) >= _VAL_BATCH_START - 5]
+    if not fs:
+        return None
+    latest = max(fs, key=os.path.getmtime)
+    seen, out = set(), []
+    for r in _csv_rows(latest):
+        prog = r.get("programa", "")
+        if not prog or prog in seen:
+            continue
+        seen.add(prog)
+        ns = {}
+        for c in _MIX_CATS:
+            key = "n_div" if c == "div" else "n_" + c
+            try:
+                ns[c] = int(r.get(key, 0) or 0)
+            except ValueError:
+                ns[c] = 0
+        tot = sum(ns.values()) or 1
+        row = {"prog": prog, "tot": tot}
+        row.update({c: round(100 * ns[c] / tot) for c in _MIX_CATS})
+        out.append(row)
+    return {"cats": _MIX_CATS, "rows": out} if out else None
 
 
 # ---------------- pagina (pestanas M1 / M2 / Validar) -----------------------
@@ -453,7 +498,7 @@ PAGINA_TMPL = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
   <div class="card"><h2>Characterize M1 (dominated loops)</h2>
    <div>__M1CATS__</div>
    <div class="fila">repeats <input type="number" id="m1rep" value="1" min="1" max="30" style="width:52px">
-    runs <input type="number" id="m1n" value="1" min="1" max="10" style="width:52px">
+    runs <input type="number" id="m1n" value="1" min="1" max="30" style="width:52px">
     <label class="chip"><input type="checkbox" id="m1nb">no rebuild</label></div>
    <div class="fila"><button class="b" onclick="m1()">Characterize M1</button>
     <button class="b g" onclick="m1full()">M1 + Fetch (loops → sweep)</button></div>
@@ -489,17 +534,22 @@ PAGINA_TMPL = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
    <div class="fila">model
     <select id="m2model">
      <option value="efimon">efimon (paper: NNLS + intercept)</option>
-     <option value="diferencial" selected>differential (+ base α + stall)</option>
+     <option value="diferencial" selected>differential (intercept + α + stall)</option>
     </select>
-    runs <input type="number" id="m2n" value="1" min="1" max="10" style="width:52px">
-    <label class="chip"><input type="checkbox" id="m2nb">no rebuild</label></div>
+    runs <input type="number" id="m2n" value="1" min="1" max="30" style="width:52px">
+    <label class="chip"><input type="checkbox" id="m2nb">no rebuild</label>
+    <label class="chip"><input type="checkbox" id="m2duty">+duty (intensity sweep _d60/_d30)</label></div>
    <details><summary style="font-size:12px;cursor:pointer;color:#9fb0c0">programs (__NM2__): dominant + fp + mixed</summary>
     <div>__M2PROGS__</div></details>
    <div class="fila"><button class="b" onclick="m2()">Characterize M2</button>
     <button class="b s" onclick="testm2()">Smoke test</button>
     <label class="chip"><input type="checkbox" id="tmduty">+duty</label></div>
+   <div class="fila">average <input type="number" id="prn2" value="3" min="2" max="30" style="width:52px"> tandas
+    <button class="b s" onclick="promediarM2()">Average M2</button></div>
    <div class="nota">dominant kernels (d100) give identifiability of the 13 categories; mixed programs
-    (×3 intensities) give overhead and P_static. Each run → regresion/campanas/</div></div>
+    (×3 intensities) give overhead and P_static. Each run → regresion/campanas/.
+    <b>average</b> = mean of the last N campaigns' coefficients (cancels session/idle bias; raw data can't
+    be pooled across campaigns).</div></div>
 
   <div class="card"><h2>Instruction mix (% per program)</h2>
    <div class="nota">retired-instruction fraction of each calibration program (last campaign)</div>
@@ -546,6 +596,9 @@ PAGINA_TMPL = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
    </div>
    <div class="lg" id="vleg" style="flex-wrap:wrap"></div>
    <div id="vtab" style="margin-top:8px"></div></div>
+  <div class="card"><h2>Instruction mix (% per program)</h2>
+   <div class="nota">retired-instruction share per category for each validation benchmark (from the latest batch).</div>
+   <div id="vmixtab" style="margin-top:6px;overflow-x:auto"></div></div>
  </div>
 </div></section>
 
@@ -573,11 +626,12 @@ async function lanzar(req){
 }
 function m1(){lanzar({accion:'m1',cats:sel('m1cat'),repeats:+$('m1rep').value,campanas:+$('m1n').value,nobuild:$('m1nb').checked})}
 function m1full(){lanzar({accion:'m1full',cats:sel('m1cat'),kb:$('fkb').value,lcref:+$('flc').value})}
-function promediar(){lanzar({accion:'promediar',n:+$('prn').value})}
+function promediar(){lanzar({accion:'promediar',metodo:'bucles',n:+$('prn').value})}
+function promediarM2(){lanzar({accion:'promediar',metodo:'regresion',n:+$('prn2').value})}
 function overhead(){lanzar({accion:'overhead',pairs:$('ovpairs').checked,dry:$('ovdry').checked})}
 function barrido(){lanzar({accion:'barrido',kb:$('fkb').value,lcref:+$('flc').value})}
 function testm2(){lanzar({accion:'testm2',duty:$('tmduty').checked})}
-function m2(){lanzar({accion:'m2',progs:sel('m2prog'),model:$('m2model').value,campanas:+$('m2n').value,nobuild:$('m2nb').checked})}
+function m2(){lanzar({accion:'m2',progs:sel('m2prog'),model:$('m2model').value,campanas:+$('m2n').value,nobuild:$('m2nb').checked,duty:$('m2duty').checked})}
 function verificar(){const m=$('vmethod').value;lanzar({accion:'verificar',progs:sel('vprog'),campanas:+$('vn').value,solo:(m==='both')?null:m})}
 async function detener(){await fetch('/stop',{method:'POST'})}
 
@@ -642,34 +696,41 @@ function renderCoef(pre, m){
  if(m.escala!=null)k.push({l:'scale',v:m.escala});
  if(m.fetch_nWb!=null)k.push({l:'fetch [nW/B]',v:m.fetch_nWb});
  if(m.stall_nJ!=null)k.push({l:'stall [nJ/cyc]',v:m.stall_nJ});
+ if(m.b0_W!=null)k.push({l:'b0 fit [W]',v:m.b0_W});
  if(m.R2)k.push({l:'R²',v:m.R2}); if(m.cond)k.push({l:'cond',v:(+m.cond).toFixed(0)});
  if(m.RMSE_mW)k.push({l:'RMSE [mW]',v:m.RMSE_mW});
  $(pre+'kpi').innerHTML=kpi(k);
  const her=new Set(m.heredadas||[]);
+ // los coef de M2 ya vienen PLEGADOS del archivo (div/mulh/fp_div/fp_sqrt con su
+ // energia completa por instruccion); se muestran tal cual, comparables con M1.
  const items=CATS.filter(c=>m.coef[c]!=null).map(c=>({k:c,v:m.coef[c],her:her.has(c)}));
  $(pre+'chart').innerHTML=barH(items);
  let t='<table><tr><th>category</th><th>coef [nJ]</th><th>source</th></tr>';
  items.forEach(it=>t+=`<tr><td>${it.k}${it.her?'<span class="badge">M1</span>':''}</td><td>${it.v}</td><td>${it.her?'<span class="her">inherited</span>':(pre==='m2'?'M2':'M1')}</td></tr>`);
  $(pre+'tab').innerHTML=t+'</table>';
 }
-function renderMix(mix){
- if(!mix||mix.error||!mix.rows){$('mixtab').innerHTML='<div class="nota">'+(mix&&mix.error?mix.error:'no campaign yet')+'</div>';return;}
+function renderMix(mix,el){
+ el=el||'mixtab';
+ if(!mix||mix.error||!mix.rows){$(el).innerHTML='<div class="nota">'+(mix&&mix.error?mix.error:'no data yet')+'</div>';return;}
  const sh={alu:'alu',mul:'mul',mulh:'mlh',div:'div',mem:'mem',ctrl:'ctl',fp_add:'f+',fp_mul:'f*',fp_fma:'ffm',fp_div:'f/',fp_sqrt:'fsq',fp_noncomp:'fnc',fp_conv:'fcv'};
  let t='<table><tr><th>program</th>'+mix.cats.map(c=>`<th>${sh[c]||c}</th>`).join('')+'</tr>';
  mix.rows.forEach(r=>{t+=`<tr><td>${esc(r.prog)}</td>`+mix.cats.map(c=>{
    const v=r[c]||0; const bg=v>=40?'background:#2d6cdf33':(v>0?'background:#2d6cdf11':'');
    return `<td style="${bg}">${v||''}</td>`;}).join('')+'</tr>';});
- $('mixtab').innerHTML=t+'</table>';
+ $(el).innerHTML=t+'</table>';
 }
 function renderCmp(e){
  const m1=e.metodos.bucles, m2=e.metodos.regresion;
  if(!m1||!m2||!m1.coef||!m2.coef){$('cmpchart').innerHTML='<div class="nota">need M1 and M2 coefficients</div>';$('cmpleg').innerHTML='';return;}
  const S=m1.escala||1;
+ // M2 ya viene PLEGADO (energia completa por instruccion en las multi-ciclo), asi
+ // que se compara directo contra M1 x escala. Ambos son energia por instruccion.
  const s1={}, s2={};
  CATS.forEach(c=>{if(m1.coef[c]!=null)s1[c]=m1.coef[c]*S; if(m2.coef[c]!=null)s2[c]=m2.coef[c];});
  const cats=CATS.filter(c=>s1[c]!=null||s2[c]!=null);
  $('cmpchart').innerHTML=barCmp(cats,s1,s2,'#2d6cdf','#c98b3a');
- $('cmpleg').innerHTML='<span><span class="sw" style="background:#2d6cdf"></span>M1 ×scale</span><span><span class="sw" style="background:#c98b3a"></span>M2</span>';
+ $('cmpleg').innerHTML='<span><span class="sw" style="background:#2d6cdf"></span>M1 ×scale</span>'
+  +'<span><span class="sw" style="background:#c98b3a"></span>M2 (plegado)</span>';
 }
 function renderValid(v){
  const clear=()=>{$('vkpi').innerHTML='';$('vchartM1').innerHTML='';$('vchartM2').innerHTML='';$('vleg').innerHTML='';$('vtab').innerHTML='';};
@@ -709,7 +770,7 @@ async function refrescarEstado(force){
  if(!force && Date.now()-ultEstado<4000) return; ultEstado=Date.now();
  const e=await (await fetch('/estado')).json();
  renderCoef('m1', e.metodos.bucles); renderCoef('m2', e.metodos.regresion);
- renderMix(e.mix); renderCmp(e); renderValid(e.validacion);
+ renderMix(e.mix); renderCmp(e); renderValid(e.validacion); renderMix(e.vmix,'vmixtab');
 }
 async function sondear(){
  const j=await (await fetch('/log?desde='+n)).json();

@@ -153,3 +153,102 @@ $(OUT)/dctrl_d60.elf: harness.S wl_dctrl.c platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imc -DREPS=1260 -DCHUNKS=10 -DSLEEP_TICKS=4800000 -o $@ harness.S wl_dctrl.c
 $(OUT)/dctrl_d30.elf: harness.S wl_dctrl.c platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imc -DREPS=630 -DCHUNKS=10 -DSLEEP_TICKS=8400000 -o $@ harness.S wl_dctrl.c
+
+# --- agregado por gen_duty.py: fpadd fpmul fpfma fpdiv fpsqrt fpnoncomp fpconv ---
+DUTY_ELFS += $(OUT)/fpadd_d60.elf $(OUT)/fpadd_d30.elf $(OUT)/fpmul_d60.elf $(OUT)/fpmul_d30.elf $(OUT)/fpfma_d60.elf $(OUT)/fpfma_d30.elf $(OUT)/fpdiv_d60.elf $(OUT)/fpdiv_d30.elf $(OUT)/fpsqrt_d60.elf $(OUT)/fpsqrt_d30.elf $(OUT)/fpnoncomp_d60.elf $(OUT)/fpnoncomp_d30.elf $(OUT)/fpconv_d60.elf $(OUT)/fpconv_d30.elf
+
+$(OUT)/fpadd_d60.elf: harness.S wl_fpadd.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpadd.c
+
+$(OUT)/fpadd_d30.elf: harness.S wl_fpadd.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpadd.c
+
+$(OUT)/fpmul_d60.elf: harness.S wl_fpmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpmul.c
+
+$(OUT)/fpmul_d30.elf: harness.S wl_fpmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpmul.c
+
+$(OUT)/fpfma_d60.elf: harness.S wl_fpfma.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpfma.c
+
+$(OUT)/fpfma_d30.elf: harness.S wl_fpfma.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpfma.c
+
+$(OUT)/fpdiv_d60.elf: harness.S wl_fpdiv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=26391 -DCHUNKS=10 -DSLEEP_TICKS=4800026 -o $@ harness.S wl_fpdiv.c
+
+$(OUT)/fpdiv_d30.elf: harness.S wl_fpdiv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=13195 -DCHUNKS=10 -DSLEEP_TICKS=8399728 -o $@ harness.S wl_fpdiv.c
+
+$(OUT)/fpsqrt_d60.elf: harness.S wl_fpsqrt.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=24664 -DCHUNKS=10 -DSLEEP_TICKS=4800084 -o $@ harness.S wl_fpsqrt.c
+
+$(OUT)/fpsqrt_d30.elf: harness.S wl_fpsqrt.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=12332 -DCHUNKS=10 -DSLEEP_TICKS=8400147 -o $@ harness.S wl_fpsqrt.c
+
+$(OUT)/fpnoncomp_d60.elf: harness.S wl_fpnoncomp.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpnoncomp.c
+
+$(OUT)/fpnoncomp_d30.elf: harness.S wl_fpnoncomp.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpnoncomp.c
+
+$(OUT)/fpconv_d60.elf: harness.S wl_fpconv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpconv.c
+
+$(OUT)/fpconv_d30.elf: harness.S wl_fpconv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400003 -o $@ harness.S wl_fpconv.c
+
+# --- agregado por gen_duty.py: dctrl ---
+DUTY_ELFS += $(OUT)/dctrl_d60.elf $(OUT)/dctrl_d30.elf
+
+$(OUT)/dctrl_d60.elf: harness.S wl_dctrl.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=25442 -DCHUNKS=10 -DSLEEP_TICKS=4800074 -o $@ harness.S wl_dctrl.c
+
+$(OUT)/dctrl_d30.elf: harness.S wl_dctrl.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=12721 -DCHUNKS=10 -DSLEEP_TICKS=8400130 -o $@ harness.S wl_dctrl.c
+
+# --- agregado por gen_duty.py: fpadd fpmul fpfma fpdiv fpsqrt fpnoncomp fpconv ---
+DUTY_ELFS += $(OUT)/fpadd_d60.elf $(OUT)/fpadd_d30.elf $(OUT)/fpmul_d60.elf $(OUT)/fpmul_d30.elf $(OUT)/fpfma_d60.elf $(OUT)/fpfma_d30.elf $(OUT)/fpdiv_d60.elf $(OUT)/fpdiv_d30.elf $(OUT)/fpsqrt_d60.elf $(OUT)/fpsqrt_d30.elf $(OUT)/fpnoncomp_d60.elf $(OUT)/fpnoncomp_d30.elf $(OUT)/fpconv_d60.elf $(OUT)/fpconv_d30.elf
+
+$(OUT)/fpadd_d60.elf: harness.S wl_fpadd.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpadd.c
+
+$(OUT)/fpadd_d30.elf: harness.S wl_fpadd.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpadd.c
+
+$(OUT)/fpmul_d60.elf: harness.S wl_fpmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpmul.c
+
+$(OUT)/fpmul_d30.elf: harness.S wl_fpmul.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpmul.c
+
+$(OUT)/fpfma_d60.elf: harness.S wl_fpfma.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpfma.c
+
+$(OUT)/fpfma_d30.elf: harness.S wl_fpfma.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpfma.c
+
+$(OUT)/fpdiv_d60.elf: harness.S wl_fpdiv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=26391 -DCHUNKS=10 -DSLEEP_TICKS=4800026 -o $@ harness.S wl_fpdiv.c
+
+$(OUT)/fpdiv_d30.elf: harness.S wl_fpdiv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=13195 -DCHUNKS=10 -DSLEEP_TICKS=8399728 -o $@ harness.S wl_fpdiv.c
+
+$(OUT)/fpsqrt_d60.elf: harness.S wl_fpsqrt.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=24664 -DCHUNKS=10 -DSLEEP_TICKS=4800084 -o $@ harness.S wl_fpsqrt.c
+
+$(OUT)/fpsqrt_d30.elf: harness.S wl_fpsqrt.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=12332 -DCHUNKS=10 -DSLEEP_TICKS=8400147 -o $@ harness.S wl_fpsqrt.c
+
+$(OUT)/fpnoncomp_d60.elf: harness.S wl_fpnoncomp.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpnoncomp.c
+
+$(OUT)/fpnoncomp_d30.elf: harness.S wl_fpnoncomp.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400002 -o $@ harness.S wl_fpnoncomp.c
+
+$(OUT)/fpconv_d60.elf: harness.S wl_fpconv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=300000 -DCHUNKS=10 -DSLEEP_TICKS=4800001 -o $@ harness.S wl_fpconv.c
+
+$(OUT)/fpconv_d30.elf: harness.S wl_fpconv.c platform.inc link.ld
+	$(CC) $(KFLAGS) -march=rv32imfc -ffp-contract=off -DREPS=150000 -DCHUNKS=10 -DSLEEP_TICKS=8400003 -o $@ harness.S wl_fpconv.c

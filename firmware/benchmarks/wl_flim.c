@@ -1,15 +1,14 @@
-/* LIMITADOR / saturacion suave (DSP real): aplica ganancia y satura cada muestra
- *   y = min(max(x*g, LO), HI)
- * Es un soft-clipper de audio / anti-windup de control. fp_noncomp DOMINANTE
- * (fmax/fmin), con fp_mul y fp_conv. Usa min/maxf de GCC -> fmax.s/fmin.s.
- *
- * Patron SEGURO (estilo gray): datos ENTEROS, floats via fcvt (sin flw), sin
- * cadenas largas, resultado entero. -ffp-contract=off. */
+/* fp_noncomp-dominante, carga MIXTA held-out. La FPU de este bitstream SOLO corre
+ * fmax/fmin/fsgnj/cmp con operandos CONSTANTES en registro (input fresco la cuelga;
+ * ver fpu_fmadd_restriccion). Las ops noncomp operan sobre un set fijo de constantes
+ * (en registro), envueltas en trabajo ENTERO real que varia por elemento -> mezcla
+ * fp_noncomp + alu + mem. Held-out: distinta proporcion/estructura que el probe
+ * fpnoncomp de calibracion. Resultado fp descartado; reduccion entera. */
 #ifndef REPS
-#define REPS 8000
+#define REPS 9000
 #endif
 #define N 512
-static int X[N];
+static int A[N];
 static int init = 0;
 
 void run_workload(void) {
@@ -17,21 +16,22 @@ void run_workload(void) {
   if (!init) {
     unsigned s = 0x13579bdfu;
     for (int i = 0; i < N; i++) {
-      s = s * 1103515245u + 12345u; X[i] = (int)((s >> 7) & 4095) - 2048;
+      s = s * 1103515245u + 12345u; A[i] = (int)((s >> 7) & 8191) + 1;
     }
     init = 1;
   }
-  const float LO = -1000.0f, HI = 1000.0f;
+  const float a = 1.5f, b = 2.25f, c = 0.75f, d = 3.125f;  /* en registros */
   for (int r = 0; r < REPS; r++) {
     int acc = 0;
-    float g = 1.0f + (float)(r & 15) * 0.05f;
     for (int i = 0; i < N; i++) {
-      float x = (float)X[i];                       /* fcvt.s.w (no flw) */
-      float v = x * g;                             /* fmul */
-      float y;
-      asm("fmax.s %0,%1,%2" : "=f"(y) : "f"(v), "f"(LO));  /* fmax.s directo */
-      asm("fmin.s %0,%1,%2" : "=f"(y) : "f"(y), "f"(HI));  /* fmin.s directo */
-      acc += (int)y;                               /* fcvt.w.s + acum. entera */
+      int v = A[i];
+      int w = (v * 7 + (v >> 1)) - (i & 127);      /* alu real */
+      float j;
+      asm volatile("fmax.s  %0,%1,%2" : "=f"(j) : "f"(a), "f"(b));  /* fp_noncomp, const */
+      asm volatile("fmin.s  %0,%1,%2" : "=f"(j) : "f"(a), "f"(c));
+      asm volatile("fsgnj.s %0,%1,%2" : "=f"(j) : "f"(d), "f"(a));
+      asm volatile("fmax.s  %0,%1,%2" : "=f"(j) : "f"(b), "f"(d));
+      acc += w + (v & 7);                           /* reduccion entera */
     }
     sink += acc;
   }

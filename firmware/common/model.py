@@ -14,7 +14,12 @@ WLO = {
 }
 INSTR = ["alu", "mul", "mulh", "mem", "ctrl", "fp_add", "fp_mul",
          "fp_fma", "fp_div", "fp_sqrt", "fp_noncomp", "fp_conv"]
-# 'div' va por CICLO (DIVCYC), no por instruccion (modelo hibrido)
+# Ciclos ~por instruccion de las categorias MULTI-CICLO. En el M2 diferencial su
+# coeficiente PLIEGA estos ciclos (energia completa por instruccion, comparable con
+# M1), y potencia_dinamica los DESCUENTA del stall para no doble-contar. Valores
+# reales medidos de los bucles dominados de M1 (mcycle/n_cat): div=21 (=DIVCYC),
+# mulh=5, fp_div=12, fp_sqrt=6. El resto de las categorias son de 1 ciclo.
+CICLOS_PLEGADOS = {"div": 21, "mulh": 5, "fp_div": 12, "fp_sqrt": 6}
 
 
 def to_int(s):
@@ -92,10 +97,16 @@ def potencia_dinamica(w, coef):
     E = sum(coef.get(c, 0.0) * val(w, WLO[c]) for c in INSTR)   # e_i * n_i (mulh: c=5 plegado)
     E += coef.get("div", 0.0) * n_div                          # e_div * n_div (c=21 plegado)
     # termino de STALL (M2 diferencial): potencia de los ciclos que NO retiran
-    # instruccion (latencia multi-ciclo + burbujas). n_stall = mcycle - retiradas.
+    # instruccion. Los coef de las cat MULTI-CICLO (div/mulh/fp_div/fp_sqrt) ya
+    # PLIEGAN sus ciclos en el coeficiente, asi que esos ciclos se DESCUENTAN del
+    # stall (si no, doble conteo). El stall queda para los ciclos "sobrantes":
+    # fetch, flush de branch, load-use, burbujas. n_stall = mcycle - retiradas -
+    # ciclos-extra-plegados. Ver CICLOS_PLEGADOS.
     if coef.get("stall"):
         total = sum(val(w, WLO[c]) for c in INSTR) + n_div
-        n_stall = T_cyc - total
+        extra = sum((c - 1) * (n_div if k == "div" else val(w, WLO[k]))
+                    for k, c in CICLOS_PLEGADOS.items())
+        n_stall = T_cyc - total - extra
         if n_stall > 0:
             E += coef["stall"] * n_stall
     E *= coef.get("escala", 1.0)                                # overhead inter-instruccion (M1)

@@ -2,7 +2,8 @@
 """Caracterizacion de coeficientes energeticos — script UNICO para los 2 metodos:
 
   bucles    (M1): un bucle dominado por categoria, aislada contra idle.
-                  coef_i = (P_cat - P_idle) * T / n_i   (div usa DIVCYC)
+                  coef_i = (P_cat - P_idle) * T / n_i   (TODO por n_i, incl. div:
+                  la latencia ~fija c~21 queda plegada en el coef, no se usa DIVCYC)
   regresion (M2): programas mixtos reales; NNLS CON intercepto (modelo efimon,
                   el del paper): P_med = P_static + sum e_i * (n_i / T),
                   con barrido de intensidad d100/d60/d30
@@ -21,6 +22,7 @@ Uso:
 import argparse
 import csv
 import os
+import re
 import shutil
 import statistics
 import subprocess
@@ -98,12 +100,16 @@ def medir_uno(prog, elf, inbox):
     cont = modelo.contadores(w)
     T = cont["mcycle"] / F_CLK
     # Variantes de ciclo de trabajo: mcycle se CONGELA durante el wfi, asi que
-    # mcycle/F_CLK es solo el tiempo ACTIVO. La ventana real (la que promedia el
-    # ESP32) es activo/duty, exacto por construccion (suenos proporcionales).
-    if prog.endswith("_d60"):
-        T /= 0.60
-    elif prog.endswith("_d30"):
-        T /= 0.30
+    # mcycle/F_CLK es solo el tiempo ACTIVO. La ventana real (wall) la MIDE el
+    # ESP32 (duration_ms): la usamos directo en vez de asumir el duty de diseno
+    # (mcycle/duty). Robusto a kernels fetch-dominados como dctrl, donde la
+    # intensidad real NO es exactamente 60/30% -> mcycle/duty daba T mal.
+    if prog.endswith(("_d60", "_d30")):
+        dur = getattr(inbox, "ultima_dur_s", None)
+        if dur and dur > 0:
+            T = dur                                  # wall REAL del ESP32
+        else:                                        # fallback: duty de diseno
+            T /= 0.60 if prog.endswith("_d60") else 0.30
     tC = jtag.ultima_temp_cC                 # temperatura del die (XADC), centi-C
     tstr = f"{tC/100:.2f}" if tC is not None else ""
     return P_med, T, cont, tstr
@@ -296,13 +302,24 @@ MIXTOS = ["memcpy", "matmul", "dotprod", "gcd", "radix", "histogram", "sort",
           "modmul", "memfill", "wmac",
           "mulhash64", "mulhscale", "mulhstream", "fir", "ratscale",
           "modpow", "trialdiv"]
-# mul/mulh/div (bajo soporte) llevan barrido de intensidad (_d60/_d30): 3 puntos
-# por categoria en vez de 1 -> ancla el reparto alfa+extra (dejaban de inflarse).
-# dctrl queda a d100: ctrl ya tiene soporte 21/21 (aparece en TODOS los programas)
-# y su duty fallaba (el asm de branches+calls no cuenta bien mcycle con CHUNKS).
-# Las sondas FP a d100 (su duty podria re-disparar el hazard de la FPU).
-D100_ONLY = set(FP_PROBES) | {"dctrl"}
+# La expansion de intensidad (_d60/_d30) es DATA-DRIVEN: se expande CADA programa
+# que YA tenga su variante generada en fuentes/duty_variants.mk (via gen_duty.py);
+# los que no la tienen corren a d100. Asi "todos con duty" = generar la variante de
+# cada uno con gen_duty, sin tocar codigo, y ninguno se rompe por falta de ELF.
+# DUTY_BAD: programas con variante pero que NO se deben expandir. Vacio desde que
+# el wall de las variantes duty se toma del duration_ms medido por el ESP32 (no del
+# mcycle/duty): eso arreglo dctrl (fetch-dominado, cuyo mcycle no daba el duty real).
+DUTY_BAD = set()
 DEFAULT_PROGS = DOM + FP_PROBES + MIXTOS
+
+
+def _progs_con_duty():
+    """Programas con variante _d60/_d30 ya generada (en duty_variants.mk), menos
+    los DUTY_BAD. La expansion de intensidad usa SOLO estos; el resto va a d100."""
+    mk = os.path.join(DIR_REGR, "fuentes", "duty_variants.mk")
+    if not os.path.exists(mk):
+        return set()
+    return set(re.findall(r"(\w+)_d60\.elf\s*:", open(mk).read())) - DUTY_BAD
 
 
 def cargar_pidle(fuente):
@@ -339,12 +356,17 @@ def leer_datos(datos_csv):
     with open(datos_csv) as f:
         for r in csv.DictReader(f):
             cont = {k: int(r.get(k, 0)) for k in modelo.COLS_CONTADORES}
-            T = cont["mcycle"] / F_CLK
-            # mismo ajuste de ventana que medir_uno: mcycle se congela en wfi
-            if r["programa"].endswith("_d60"):
-                T /= 0.60
-            elif r["programa"].endswith("_d30"):
-                T /= 0.30
+            prog = r["programa"]
+            if prog.endswith(("_d60", "_d30")):
+                # duty: usa el wall REAL medido (columna T_s, escrita por
+                # medir_uno desde duration_ms del ESP32). Fallback al /duty viejo
+                # si la fila no lo trae (datos historicos).
+                try:
+                    T = float(r["T_s"])
+                except (KeyError, ValueError, TypeError):
+                    T = cont["mcycle"] / F_CLK / (0.60 if prog.endswith("_d60") else 0.30)
+            else:
+                T = cont["mcycle"] / F_CLK
             todas.append((r["programa"], float(r["P_med_W"]), T,
                           cont, r.get("temp_C", "")))
     campanas = []
@@ -439,33 +461,53 @@ def ajustar_diferencial(rows, P_idle):
     # via n_div -> homogeneo). alfa*r_total = modo comun (overhead por instr).
     Tn = np.array([r[2] for r in rows])
     rtot = np.array([sum(r[3][REGR[c]] for c in cats) for r in rows]) / Tn
-    otras = [c for c in cats if c != "alu"]          # alu = alfa puro (sin extra)
+    # REFERENCIA = mul (la categoria mas barata, segun M1 mul<alu): alfa = e_mul.
+    # Asi las demas (alu, mem, fp...) tienen extra POSITIVO y se separan del piso,
+    # en vez de aplastarse todas en alfa (con alu de referencia, mul<alu daba extra
+    # negativo -> la NNLS lo clampeaba a 0 y quedaban alu=mul=mem=... iguales).
+    ref = "mul" if "mul" in cats else "alu"
+    otras = [c for c in cats if c != ref]            # ref = alfa puro (sin extra)
     Rx = np.array([[r[3][REGR[c]] / r[2] for c in otras] for r in rows])
     # TERMINO DE STALL (Tiwari, 3.er termino): ciclos que NO retiran instruccion
     # (latencia multi-ciclo de div/mulh/fp_div/fp_sqrt + burbujas de pipeline).
     # Consumen potencia que el modelo por-instruccion (alfa+extra) ignora ->
     # subvalua los programas de mucho stall. n_stall = mcycle - instr retiradas.
     stall = np.array([r[3].get("n_stall", 0) / r[2] for r in rows])
-    X = np.hstack([rtot[:, None], Rx, stall[:, None]])
-    delta = np.array([r[1] for r in rows]) - P_idle
+    # INTERCEPTO ajustado (b0), NO se resta el idle medido. Empiricamente da
+    # coeficientes MUCHO mas estables campana a campana: el idle medido tiene ruido
+    # (~3 mW sesion a sesion) que, restado a TODOS los puntos, contamina el ajuste;
+    # el intercepto ABSORBE ese ruido de linea base y el barrido de duty lo deja
+    # bien identificado (b0 sale ~= idle medido). La prediccion sigue usando el
+    # idle de la SESION de validacion (b0 es solo de calibracion / chequeo).
+    ones = np.ones((len(rows), 1))
+    X = np.hstack([ones, rtot[:, None], Rx, stall[:, None]])
+    y = np.array([r[1] for r in rows])               # P_med (con intercepto)
     sd = X.std(0); sd[sd == 0] = 1.0
-    e, _ = nnls(X / sd, delta)
+    e, _ = nnls(X / sd, y)
     e = e / sd
-    alfa = e[0]
-    extras = dict(zip(otras, e[1:1 + len(otras)]))
+    b0 = e[0]
+    alfa = e[1]
+    extras = dict(zip(otras, e[2:2 + len(otras)]))
     e_stall = e[-1]
-    coefs = {"alu": alfa}                             # energia POR INSTRUCCION
+    coefs = {ref: alfa}                               # energia POR INSTRUCCION (ref=piso)
     for c in otras:                                  # div incluido, uniforme
         coefs[c] = alfa + extras[c]
     coefs["stall"] = e_stall                         # energia POR CICLO de stall
-    pred = X @ e
-    resid = delta - pred
+    # PLIEGA los ciclos multi-ciclo en el coeficiente: coef += stall*(ciclos-1).
+    # Asi div/mulh/fp_div/fp_sqrt quedan con su ENERGIA COMPLETA por instruccion
+    # (comparable con M1, ~10 nJ div). potencia_dinamica descuenta esos ciclos del
+    # stall -> misma prediccion, coeficientes con sentido fisico. Equivalente exacto.
+    for c, ciclos in modelo.CICLOS_PLEGADOS.items():
+        coefs[c] = coefs.get(c, 0.0) + e_stall * (ciclos - 1)
+    pred = X @ e                                     # predice P_med (incluye b0)
+    delta = y - P_idle                               # senal dinamica (R2 comparable)
+    resid = y - pred                                 # residual (b0 ~= idle -> dinamico)
     ss_res = float(resid @ resid); ss_tot = float(delta @ delta)
-    info = {"P_idle": P_idle, "alfa": alfa, "cats": cats, "e_stall": e_stall,
+    info = {"P_idle": P_idle, "b0": b0, "alfa": alfa, "cats": cats, "e_stall": e_stall,
             "r2": 1 - ss_res / ss_tot if ss_tot > 0 else float("nan"),
-            "rmse": (ss_res / len(delta)) ** 0.5,
+            "rmse": (ss_res / len(y)) ** 0.5,
             "cond": float(np.linalg.cond(X / sd)),
-            "pred_abs": pred + P_idle}
+            "pred_abs": pred}
     return coefs, info
 
 
@@ -564,7 +606,7 @@ def cmd_regresion(args):
               f"({len(rows)} corridas, sin volver a medir)")
     else:
         progs = args.programas or DEFAULT_PROGS
-        if len(progs) < len(DYN) + 1:
+        if not getattr(args, "medir_solo", False) and len(progs) < len(DYN) + 1:
             sys.exit(f"hacen falta >= {len(DYN)+1} programas mixtos (M > 7 incognitas); "
                      f"diste {len(progs)}")
         # con --pidle medir, idle.elf va PRIMERO en la misma sesion (mismo piso)
@@ -573,11 +615,19 @@ def cmd_regresion(args):
         # SEPARACION de categorias (identificabilidad); el barrido de intensidad
         # que ancla P_static lo dan los mixtos. Asi los dominantes/fp no necesitan
         # variantes de duty (que requieren un pase de timing previo).
-        if args.modelo == "efimon":
+        if args.modelo == "efimon" or getattr(args, "duty", False):
+            con_duty = _progs_con_duty()
             progs = [v for q in progs
-                     for v in ([q] if q in D100_ONLY else (q, q + "_d60", q + "_d30"))]
+                     for v in ((q, q + "_d60", q + "_d30") if q in con_duty else [q])]
         run_list = (["idle"] + progs) if args.pidle == "medir" else progs
         rows = medir_regresion(run_list, args.no_build, datos_csv)
+
+    if getattr(args, "medir_solo", False):
+        print("\n--medir-solo: SIN ajuste. Resumen (T = wall real medido por el ESP32):")
+        print(f"  {'prog':16}{'P_med[W]':>10}{'T_wall[s]':>11}{'mcycle':>13}")
+        for prog, P, T, cont, ts in rows:
+            print(f"  {prog:16}{P:>10.5f}{T:>11.2f}{cont['mcycle']:>13,}")
+        return
 
     # separa la corrida de referencia (idle) de las de calibracion
     cal_rows = [r for r in rows if r[0] != "idle"]
@@ -650,6 +700,8 @@ def cmd_regresion(args):
                      f" R2={info['r2']:.4f}, RMSE={info['rmse']*1e3:.2f} mW, cond={info['cond']:.1f}"])
         wc.writerow(["parametro", "coef", "unidad"])
         wc.writerow(["P_idle", f"{info['P_idle']:.6f}", "W"])
+        if "b0" in info:                              # intercepto ajustado (chequeo
+            wc.writerow(["b0", f"{info['b0']:.6f}", "W"])  # de consistencia vs P_idle)
         if T_idle is not None:
             wc.writerow(["T_idle", f"{T_idle:.2f}", "C"])
         for c in DYN:
@@ -724,6 +776,14 @@ def main():
     ar.add_argument("--refit", action="store_true",
                     help="NO mide: re-ajusta desde datos.csv (para reusar mediciones ya hechas)")
     ar.add_argument("--no-build", action="store_true", help="no recompilar ELF antes de medir")
+    ar.add_argument("--duty", action="store_true",
+                    help="fuerza el barrido de intensidad _d60/_d30 de los mixtos "
+                         "aunque el modelo NO sea efimon (p.ej. diferencial): mas "
+                         "puntos a distinta actividad -> fit mejor condicionado")
+    ar.add_argument("--medir-solo", dest="medir_solo", action="store_true",
+                    help="solo MIDE (escribe datos.csv) y muestra P_med/T/mcycle, "
+                         "SIN ajustar; sirve para validar timings de pocos programas "
+                         "(p.ej. dctrl --duty). Ignora el minimo de programas.")
     ar.set_defaults(fn=cmd_regresion)
 
     args = ap.parse_args()

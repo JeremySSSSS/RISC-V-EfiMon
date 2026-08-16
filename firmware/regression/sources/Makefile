@@ -62,7 +62,7 @@ $(OUT)/ddiv.elf:  harness.S wl_ddiv.c  platform.inc link.ld
 $(OUT)/dmem.elf:  harness.S wl_dmem.c  platform.inc link.ld
 	$(CC) $(KFLAGS) -march=rv32imc -DREPS=130000  -o $@ harness.S wl_dmem.c
 $(OUT)/dctrl.elf: harness.S wl_dctrl.c platform.inc link.ld
-	$(CC) $(KFLAGS) -march=rv32imc -DREPS=23000   -o $@ harness.S wl_dctrl.c
+	$(CC) $(KFLAGS) -march=rv32imc -DREPS=400000  -o $@ harness.S wl_dctrl.c
 
 # idle de referencia (wfi, piso pasivo) ~30 s -> da P_idle medido en sesion.
 # .S auto-contenido (su propio _start), no usa harness.S.

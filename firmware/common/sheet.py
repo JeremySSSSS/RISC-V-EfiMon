@@ -72,11 +72,18 @@ def fnum(x):
 
 class Inbox:
     """Espera las filas que sube el ESP32 a 'inbox' (una por ventana medida).
-    Detecta fila nueva por conteo; get_pavg() bloquea hasta que aparezca."""
+    Detecta fila nueva por CONTENIDO de la ultima fila (no por conteo): el
+    Apps Script poda el inbox (borra viejas al escribir), asi que la CUENTA no
+    crece con cada ventana -> una deteccion por len() se cuelga. La 'fecha'
+    hace unica cada fila, asi que comparar la ultima fila completa es robusto a
+    la poda. get_pavg() bloquea hasta que la ultima fila cambie."""
 
     def __init__(self, hoja="inbox"):
         self.hoja = hoja
-        self.seen = n_filas(hoja)
+        self.marca = ultima(hoja)   # ultima fila conocida (o None), NO un conteo
+        self.ultima_dur_s = None    # duracion de pared de la ULTIMA ventana devuelta
+                                    # por get_pavg (para el wall real de las variantes
+                                    # duty, que no asume el duty de diseno)
 
     def get_pavg(self, timeout=30, esperado_s=None):
         """Espera la fila nueva del ESP32 y devuelve su p_avg. Si se conoce la
@@ -89,18 +96,33 @@ class Inbox:
         avisado = False
         while time.time() - t0 < timeout:
             filas = leer(self.hoja)
-            if len(filas) > self.seen:
-                self.seen = len(filas)
-                fila = filas[-1]
-                if esperado_s is not None and fila.get("duration_ms"):
-                    dur = fnum(fila["duration_ms"]) / 1e3
-                    if abs(dur - esperado_s) > max(2.0, 0.15 * esperado_s):
-                        print(f"    [GUARDA] fila del ESP32 con duracion "
-                              f"{dur:.1f} s (esperaba {esperado_s:.1f} s): "
-                              f"ventana vieja desalineada, la descarto y sigo "
-                              f"esperando la correcta")
-                        continue
-                return fnum(fila["p_avg"])
+            nueva = filas[-1] if filas else None
+            if nueva is not None and nueva != self.marca:
+                # p_avg puede venir VACIO por un instante: la lectura cayo sobre
+                # una fila recien anexada por el ESP32 mientras la poda del Apps
+                # Script reacomodaba filas. NO fijamos la marca -> se reintenta
+                # hasta que la fila este completa (evita el crash de fnum('') y
+                # evita perder la ventana, que tiene la misma 'fecha').
+                try:
+                    pval = fnum(nueva.get("p_avg", ""))
+                except (ValueError, TypeError):
+                    pval = None
+                if pval is not None:
+                    self.marca = nueva
+                    dur = nueva.get("duration_ms", "")
+                    try:
+                        self.ultima_dur_s = fnum(dur) / 1e3 if dur else None
+                    except (ValueError, TypeError):
+                        self.ultima_dur_s = None
+                    if esperado_s is not None and nueva.get("duration_ms"):
+                        dur = fnum(nueva["duration_ms"]) / 1e3
+                        if abs(dur - esperado_s) > max(2.0, 0.15 * esperado_s):
+                            print(f"    [GUARDA] fila del ESP32 con duracion "
+                                  f"{dur:.1f} s (esperaba {esperado_s:.1f} s): "
+                                  f"ventana vieja desalineada, la descarto y sigo "
+                                  f"esperando la correcta")
+                            continue
+                    return pval
             if not avisado:   # un solo aviso, no uno cada 3 s
                 print(f"    esperando la ventana del ESP32 (max {timeout} s)...")
                 avisado = True
@@ -108,9 +130,9 @@ class Inbox:
         raise TimeoutError(f"timeout esperando fila nueva en '{self.hoja}'")
 
     def reset(self):
-        """Fija 'seen' al conteo ACTUAL de filas: se llama JUSTO ANTES de correr
-        el kernel, para que get_pavg solo acepte ventanas subidas DESPUES (drena
-        las pendientes/atrasadas). Sin esto, una ventana vieja que llega tarde se
-        aparea con la corrida equivocada (p.ej. fpdiv tomando la ventana de fpfma
-        cuando sus duraciones son parecidas y el guard no las distingue)."""
-        self.seen = n_filas(self.hoja)
+        """Fija la marca a la ultima fila ACTUAL: se llama JUSTO ANTES de correr
+        el kernel, para que get_pavg solo acepte una fila DISTINTA subida DESPUES
+        (drena las pendientes/atrasadas). Sin esto, una ventana vieja que llega
+        tarde se aparea con la corrida equivocada (p.ej. fpdiv tomando la ventana
+        de fpfma cuando sus duraciones son parecidas y el guard no las distingue)."""
+        self.marca = ultima(self.hoja)
