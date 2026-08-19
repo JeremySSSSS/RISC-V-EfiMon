@@ -1,22 +1,48 @@
-# Data — characterization and validation
+# Datos de caracterización y validación
 
-Measurement data used to characterize the classifier's energy coefficients
-(CV32E40P / PULPissimo on Nexys A7) and to validate the model on BEEBS
-kernels. Power in W, time in s, temperature in °C.
+Datos finales del TFG: estimación de consumo por conteo de instrucciones en el
+núcleo CV32E40P (PULPissimo / Nexys A7), con dos métodos de caracterización.
 
-## `characterization/`
+- **M1 — bucles dominados:** una categoría por lazo, aislada contra el idle.
+- **M2 — regresión (NNLS):** programas mixtos, modelo diferencial (base α +
+  sobrecosto por categoría + término de stall), intercepto ajustado y **mul** como
+  referencia; multi-ciclo plegado a energía por instrucción.
 
-- `regression/` — Method 2 (NNLS regression, EfiMon-style, intensity sweep):
-  calibration measurements, fitted `coefficients.csv`, and per-campaign backups.
-- `loops/` — Method 1 (category-dominated loops): loop measurements, fitted
-  coefficients, and per-campaign backups.
-- `thermal/` — idle power vs. die temperature (forced-air sweep).
+## Validación — medido vs. predicho
 
-## `validation/`
+20 tandas de validación (cargas *held-out*: BEEBS + kernels propios fp), potencia
+estimada contra la medida por el banco (INA228). La bisectriz es el acierto perfecto.
 
-Runs on held-out BEEBS kernels (disjoint from calibration). Three batches from
-the same (thermal-plateau) campaign, each provided with both predictions over the
-same measured runs: `validation_regression_measure_*.csv` (method 2 in `P_pred_W`)
-and `validation_loops_measure_*.csv` (method 1). Since the counters are identical
-and only the coefficients change, the measured power is the same in both and the
-comparison isolates the model difference.
+![Validación M1 vs M2](validacion.png)
+
+| método | RMSE | error (RMSE / P̄) |
+|---|---|---|
+| **M1** (bucles dominados) | 1.43 mW | **0.123 %** |
+| **M2** (regresión NNLS)   | 1.57 mW | **0.135 %** |
+
+El error sobre la potencia total (~1.17 W, 99 % estática) es del orden de 0.12 %;
+sobre la componente **dinámica** (~22 mW, lo que el modelo realmente predice)
+equivale a ~5–8 %.
+
+## Comparación de coeficientes M1 vs. M2
+
+Energía por instrucción de cada categoría, por los dos métodos independientes.
+
+![Coeficientes M1 vs M2](coef_barras.png)
+
+Los dos métodos coinciden en las categorías dominantes (div ≈ 10.3/10.6 nJ, mulh,
+fp_div, fp_sqrt), lo que valida cruzadamente el modelo: M1 las mide aisladas, M2
+las despeja de mezclas reales, y dan lo mismo.
+
+## Estructura
+
+```
+data/
+├── characterization/
+│   ├── loops/            # M1: data.csv (crudo), campaigns/ (por tanda), coefficients.csv
+│   └── regression/       # M2: idem
+└── validation/           # 20 tandas (M1 + M2)
+```
+
+Los `.pdf` (`validacion.pdf`, `coef_barras.pdf`) son las versiones vectoriales
+para el documento.
