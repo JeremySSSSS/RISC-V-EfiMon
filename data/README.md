@@ -1,48 +1,47 @@
-# Datos de caracterización y validación
+# Characterization and validation data
 
-Datos finales del TFG: estimación de consumo por conteo de instrucciones en el
-núcleo CV32E40P (PULPissimo / Nexys A7), con dos métodos de caracterización.
+Final data of the project: instruction-count-based energy estimation on the
+CV32E40P core (PULPissimo / Nexys A7), with two characterization methods.
 
-- **M1 — bucles dominados:** una categoría por lazo, aislada contra el idle.
-- **M2 — regresión (NNLS):** programas mixtos, modelo diferencial (base α +
-  sobrecosto por categoría + término de stall), intercepto ajustado y **mul** como
-  referencia; multi-ciclo plegado a energía por instrucción.
+- **M1 — dominated loops:** one category per loop, isolated against idle.
+- **M2 — regression (NNLS):** mixed programs, differential model (base α +
+  per-category overhead + stall term), fitted intercept and **mul** as the
+  reference; multi-cycle categories folded into per-instruction energy.
 
-## Validación — medido vs. predicho
+## Validation — measured vs. predicted
 
-20 tandas de validación (cargas *held-out*: BEEBS + kernels propios fp), potencia
-estimada contra la medida por el banco (INA228). La bisectriz es el acierto perfecto.
+20 validation runs (held-out loads: BEEBS + custom fp kernels), estimated power
+against the power measured by the bench (INA228). The diagonal is the perfect fit.
 
-![Validación M1 vs M2](validacion.png)
+![Validation M1 vs M2](validacion.png)
 
-| método | RMSE | error (RMSE / P̄) |
+| method | RMSE | error (RMSE / P̄) |
 |---|---|---|
-| **M1** (bucles dominados) | 1.43 mW | **0.123 %** |
-| **M2** (regresión NNLS)   | 1.57 mW | **0.135 %** |
+| **M1** (dominated loops) | 1.43 mW | **0.123 %** |
+| **M2** (NNLS regression) | 1.57 mW | **0.135 %** |
 
-El error sobre la potencia total (~1.17 W, 99 % estática) es del orden de 0.12 %;
-sobre la componente **dinámica** (~22 mW, lo que el modelo realmente predice)
-equivale a ~5–8 %.
+The error on total power (~1.17 W, 99 % static) is about 0.12 %; relative to the
+**dynamic** component (~22 mW, what the model actually predicts) it is ~5–8 %.
 
-## Comparación de coeficientes M1 vs. M2
+## M1 vs. M2 coefficient comparison
 
-Energía por instrucción de cada categoría, por los dos métodos independientes.
+Per-instruction energy of each category, from the two independent methods.
 
-![Coeficientes M1 vs M2](coef_barras.png)
+![M1 vs M2 coefficients](coef_barras.png)
 
-Los dos métodos coinciden en las categorías dominantes (div ≈ 10.3/10.6 nJ, mulh,
-fp_div, fp_sqrt), lo que valida cruzadamente el modelo: M1 las mide aisladas, M2
-las despeja de mezclas reales, y dan lo mismo.
+Both methods agree on the dominant categories (div ≈ 10.3 / 10.6 nJ, mulh, fp_div,
+fp_sqrt), which cross-validates the model: M1 measures them in isolation, M2 solves
+for them from real mixed programs, and they land on the same values.
 
-## Estructura
+## Layout
 
 ```
 data/
 ├── characterization/
-│   ├── loops/            # M1: data.csv (crudo), campaigns/ (por tanda), coefficients.csv
-│   └── regression/       # M2: idem
-└── validation/           # 20 tandas (M1 + M2)
+│   ├── loops/            # M1: data.csv (raw), campaigns/ (per run), coefficients.csv
+│   └── regression/       # M2: same
+└── validation/           # 20 runs (M1 + M2)
 ```
 
-Los `.pdf` (`validacion.pdf`, `coef_barras.pdf`) son las versiones vectoriales
-para el documento.
+The `.pdf` files (`validacion.pdf`, `coef_barras.pdf`) are the vector versions for
+the document.
