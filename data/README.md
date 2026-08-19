@@ -13,7 +13,7 @@ CV32E40P core (PULPissimo / Nexys A7), with two characterization methods.
 20 validation runs (held-out loads: BEEBS + custom fp kernels), estimated power
 against the power measured by the bench (INA228). The diagonal is the perfect fit.
 
-![Validation M1 vs M2](validacion.png)
+![Validation M1 vs M2](validation.png)
 
 | method | RMSE | error (RMSE / P̄) |
 |---|---|---|
@@ -27,7 +27,7 @@ The error on total power (~1.17 W, 99 % static) is about 0.12 %; relative to the
 
 Per-instruction energy of each category, from the two independent methods.
 
-![M1 vs M2 coefficients](coef_barras.png)
+![M1 vs M2 coefficients](coefficients.png)
 
 Both methods agree on the dominant categories (div ≈ 10.3 / 10.6 nJ, mulh, fp_div,
 fp_sqrt), which cross-validates the model: M1 measures them in isolation, M2 solves
@@ -43,5 +43,5 @@ data/
 └── validation/           # 20 runs (M1 + M2)
 ```
 
-The `.pdf` files (`validacion.pdf`, `coef_barras.pdf`) are the vector versions for
+The `.pdf` files (`validation.pdf`, `coefficients.pdf`) are the vector versions for
 the document.
