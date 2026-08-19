@@ -1,0 +1,17 @@
+# Bucles dominados (M1). Generado 2026-08-15 02:37:09.,coef=(P_cat-P_idle)*T/n_i por instruccion (div: c~21 plegado).
+parametro,coef,unidad
+P_idle,1.146708,W
+T_idle,39.37,C
+alu,2.427307e-09,J/instr
+mul,1.459893e-09,J/instr
+mulh,6.112480e-09,J/instr
+div,1.000134e-08,J/instr
+mem,2.399767e-09,J/instr
+ctrl,5.999046e-09,J/instr
+fp_add,4.294200e-09,J/instr
+fp_mul,3.522600e-09,J/instr
+fp_fma,5.124600e-09,J/instr
+fp_div,9.165450e-09,J/instr
+fp_sqrt,6.173750e-09,J/instr
+fp_noncomp,2.672375e-09,J/instr
+fp_conv,2.657700e-09,J/instr

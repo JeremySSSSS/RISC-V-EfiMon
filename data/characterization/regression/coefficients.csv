@@ -1,11 +1,18 @@
-"# Regresion (M2, modelo efimon). Generado 2026-07-12 01:24:38. NNLS CON INTERCEPTO ajustado (P_idle = P_static de la regression; barrido de intensidad d100/d60/d30). n=45 corridas, R2=0.9826, RMSE=1.74 mW, cond=7.8"
+# Regresion NNLS (M2) - PROMEDIO de 5 tandas. Generado 2026-08-15 21:54:10.,coef diferenciales promediados campana a campana.
 parametro,coef,unidad
-P_idle,1.146584,W
-T_idle,39.24,C
-alu,2.156649e-09,J/instr
-mul,1.095530e-09,J/instr
-mulh,1.035358e-08,J/instr
-div,4.254263e-10,J/ciclo
-mem,2.576314e-09,J/instr
-ctrl,9.207778e-09,J/instr
-float,3.413574e-09,J/instr
+P_idle,1.147701e+00,W
+b0,1.147091e+00,W
+alu,2.933738e-09,J/instr
+mul,1.685373e-09,J/instr
+mulh,6.462470e-09,J/instr
+div,1.058740e-08,J/instr
+mem,1.847166e-09,J/instr
+ctrl,5.280134e-09,J/instr
+fp_add,4.028981e-09,J/instr
+fp_mul,4.004463e-09,J/instr
+fp_fma,4.174329e-09,J/instr
+fp_div,8.928148e-09,J/instr
+fp_sqrt,6.212732e-09,J/instr
+fp_noncomp,2.055298e-09,J/instr
+fp_conv,2.527571e-09,J/instr
+stall,4.273459e-10,J/ciclo
