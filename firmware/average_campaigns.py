@@ -30,7 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 def load(f):
     c = {}
     for r in csv.reader(open(f)):
-        if r and r[0] not in ("parametro", "") and not r[0].startswith("#"):
+        if r and r[0] not in ("parameter", "") and not r[0].startswith("#"):
             try:
                 c[r[0]] = (float(r[1]), r[2] if len(r) > 2 else "")
             except ValueError:
@@ -86,7 +86,7 @@ def main():
                     f"Generado {time.strftime('%Y-%m-%d %H:%M:%S')}.",
                     "coef=(P_cat-P_idle)*T/n; div usa DIVCYC." if es_m1
                     else "coef diferenciales promediados campana a campana."])
-        w.writerow(["parametro", "coef", "unidad"])
+        w.writerow(["parameter", "coef", "unit"])
         for k in order:
             v, u, _ = avg[k]
             w.writerow([k, f"{v:.6e}", u])
@@ -97,7 +97,7 @@ def main():
     print(f"\n{'param':11s} {'promedio':>11} {'unid':>8} {'n':>3}")
     for k in order:
         v, u, n = avg[k]
-        sc = 1e9 if u in ("J/instr", "J/ciclo") else 1
+        sc = 1e9 if u in ("J/instr", "J/cycle") else 1
         us = "nJ" if sc > 1 else (u or "-")
         tag = " (del barrido)" if k == "fetch" and n == 0 else ""
         print(f"{k:11s} {v*sc:11.3f} {us:>8} {n:>3}{tag}")

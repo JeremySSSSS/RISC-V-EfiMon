@@ -91,7 +91,7 @@ def main():
         sys.exit("no hay coeficientes de ningun metodo pedido (corre M1/M2 primero)")
     print("=== Validation (both methods on the same runs) ===")
 
-    header = (["fecha", "method", "programa", "T_s", "P_med_W", "P_pred_W",
+    header = (["date", "method", "program", "T_s", "P_meas_W", "P_pred_W",
                "err_pct", "temp_C"] + modelo.COLS_CONTADORES)
     new = not os.path.exists(VERIF_CSV)
     fcsv = open(VERIF_CSV, "a", newline="")
@@ -136,7 +136,7 @@ def main():
         P_idle = float(args.pidle)
         print(f"  P_idle = {P_idle:.4f} W (set from the command line)\n")
 
-    print(f"{'programa':12s} {'P_med[W]':>9s} | "
+    print(f"{'program':12s} {'P_med[W]':>9s} | "
           f"{'loops[W]':>9s} {'err%':>7s} | {'regr[W]':>9s} {'err%':>7s}   T[s]")
     errs = {m: [] for m in mets}
     for prog in args.programas:

@@ -74,7 +74,7 @@ class Inbox:
     """Espera las filas que sube el ESP32 a 'inbox' (una por ventana medida).
     Detecta fila nueva por CONTENIDO de la ultima fila (no por conteo): el
     Apps Script poda el inbox (borra viejas al escribir), asi que la CUENTA no
-    crece con cada ventana -> una deteccion por len() se cuelga. La 'fecha'
+    crece con cada ventana -> una deteccion por len() se cuelga. La 'date'
     hace unica cada fila, asi que comparar la ultima fila completa es robusto a
     la poda. get_pavg() bloquea hasta que la ultima fila cambie."""
 
@@ -102,7 +102,7 @@ class Inbox:
                 # una fila recien anexada por el ESP32 mientras la poda del Apps
                 # Script reacomodaba filas. NO fijamos la marca -> se reintenta
                 # hasta que la fila este completa (evita el crash de fnum('') y
-                # evita perder la ventana, que tiene la misma 'fecha').
+                # evita perder la ventana, que tiene la misma 'date').
                 try:
                     pval = fnum(nueva.get("p_avg", ""))
                 except (ValueError, TypeError):

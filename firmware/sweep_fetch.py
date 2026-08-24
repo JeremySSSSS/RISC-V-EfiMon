@@ -45,13 +45,13 @@ def medir():
 def ultimo_punto():
     """Ultima corrida ctrl del datos.csv + su idle de sesion -> dict con el punto."""
     rows = list(csv.DictReader(open(DATOS)))
-    ci = [i for i, r in enumerate(rows) if r["categoria"] == "ctrl"]
+    ci = [i for i, r in enumerate(rows) if r["category"] == "ctrl"]
     if not ci:
         raise RuntimeError("no hay corridas ctrl en datos.csv")
     r = rows[ci[-1]]
     ri = None
     for j in range(ci[-1] - 1, -1, -1):
-        if rows[j]["categoria"] == "idle":
+        if rows[j]["category"] == "idle":
             ri = rows[j]
             break
     if ri is None:
@@ -59,14 +59,14 @@ def ultimo_punto():
     if "n_fetch" not in r:
         raise RuntimeError("el CSV no tiene columna n_fetch: falta sintetizar el "
                            "contador o reconstruir firmware")
-    Pc, Pi = float(r["P_med_W"]), float(ri["P_med_W"])
+    Pc, Pi = float(r["P_meas_W"]), float(ri["P_meas_W"])
     T = float(r["T_s"])
     nc = int(r["n_ctrl"]); nf = int(r["n_fetch"]); mc = int(r["mcycle"])
     ntot = sum(int(r[k]) for k in CATS)
     return {
         "coef_nJ": (Pc - Pi) * T / nc * 1e9,     # e_ctrl medido [nJ/ctrl]
         "rng":     nf,                             # rango fetch = footprint [bytes]
-        "cic_ctrl": mc / nc,
+        "cyc_ctrl": mc / nc,
         "dP_mW":   (Pc - Pi) * 1e3,
         "ctrl_pct": 100 * nc / ntot,
         "T_s":     T,
@@ -114,14 +114,14 @@ def main():
         p["kb"] = kb
         pts.append(p)
         print(f"  -> coef={p['coef_nJ']:.2f} nJ  rango={p['rng']}  "
-              f"cic/ctrl={p['cic_ctrl']:.2f}  ctrl%={p['ctrl_pct']:.1f}")
+              f"cic/ctrl={p['cyc_ctrl']:.2f}  ctrl%={p['ctrl_pct']:.1f}")
 
     # tabla
     print("\n" + "=" * 64)
     print(f"{'KB':>4} {'coef[nJ]':>9} {'rango':>9} {'cic/ctrl':>8} {'dP[mW]':>7} {'ctrl%':>6}")
     for p in pts:
         print(f"{p['kb']:>4} {p['coef_nJ']:9.2f} {p['rng']:9d} "
-              f"{p['cic_ctrl']:8.2f} {p['dP_mW']:7.1f} {p['ctrl_pct']:5.1f}")
+              f"{p['cyc_ctrl']:8.2f} {p['dP_mW']:7.1f} {p['ctrl_pct']:5.1f}")
 
     rng = [p["rng"] for p in pts]
     # e_flush = intercepto de coef[nJ] vs rango (ctrl base sin fetch)
@@ -152,11 +152,11 @@ def main():
     out = os.path.join(HERE, "barrido_fetch.csv")
     with open(out, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["kb", "coef_nJ", "rango_bytes", "cic_ctrl",
+        w.writerow(["kb", "coef_nJ", "range_bytes", "cyc_ctrl",
                     "dP_mW", "ctrl_pct", "T_s", "n_fetch", "n_ctrl"])
         for p in pts:
             w.writerow([p["kb"], f"{p['coef_nJ']:.4f}", str(p["rng"]),
-                        f"{p['cic_ctrl']:.3f}", f"{p['dP_mW']:.2f}",
+                        f"{p['cyc_ctrl']:.3f}", f"{p['dP_mW']:.2f}",
                         f"{p['ctrl_pct']:.2f}", f"{p['T_s']:.3f}",
                         p["n_fetch"], p["n_ctrl"]])
     print(f"\nGuardado: {out}")

@@ -223,7 +223,7 @@ def _leer_coef(path, m1_ref=None):
     extras (escala/fetch/stall), y meta del encabezado (R2/RMSE/cond/n).
     Si m1_ref (coef de M1) esta dado, marca las categorias heredadas (iguales)."""
     P_idle, coef = modelo.cargar_coeficientes(path)
-    d = {"fecha": time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(path))),
+    d = {"date": time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(path))),
          "P_idle_W": round(P_idle, 6) if P_idle is not None else None,
          "T_idle_C": modelo.ultimo_T_idle,
          "coef": {k: round(coef[k] * 1e9, 3) for k in CATS if k in coef},
@@ -298,10 +298,10 @@ def _ultima_validacion():
                 continue
             for r in _csv_rows(p):
                 try:
-                    med, pred = float(r["P_med_W"]), float(r["P_pred_W"])
+                    med, pred = float(r["P_meas_W"]), float(r["P_pred_W"])
                 except (KeyError, ValueError):
                     continue
-                rows.append({"prog": r.get("programa", ""), "med": round(med, 5),
+                rows.append({"prog": r.get("program", ""), "med": round(med, 5),
                              "pred": round(pred, 5), "err": r.get("err_pct", ""),
                              "temp": r.get("temp_C", "")})
                 meds.append(med)
@@ -368,13 +368,13 @@ def _instr_mix():
     if not os.path.exists(p):
         return None
     rows = _csv_rows(p)
-    idxs = [i for i, r in enumerate(rows) if r.get("programa") == "idle"]
+    idxs = [i for i, r in enumerate(rows) if r.get("program") == "idle"]
     if not idxs:
         return None
     camp = rows[idxs[-1]:]
     out = []
     for r in camp:
-        prog = r.get("programa", "")
+        prog = r.get("program", "")
         if prog == "idle" or prog.endswith(("_d60", "_d30")):
             continue
         ns = {}
@@ -405,7 +405,7 @@ def _instr_mix_val():
     latest = max(fs, key=os.path.getmtime)
     seen, out = set(), []
     for r in _csv_rows(latest):
-        prog = r.get("programa", "")
+        prog = r.get("program", "")
         if not prog or prog in seen:
             continue
         seen.add(prog)
@@ -691,7 +691,7 @@ function barCmp(cats, s1, s2, c1, c2){
 function renderCoef(pre, m){
  if(!m||m.error){$(pre+'meta').textContent=m?('error: '+m.error):'no campaign yet';
   $(pre+'kpi').innerHTML='';$(pre+'chart').innerHTML='';$(pre+'tab').innerHTML='';return;}
- $(pre+'meta').innerHTML=`latest: <b>${m.fecha||'?'}</b>` + (m.n?` · n=${m.n} runs`:'');
+ $(pre+'meta').innerHTML=`latest: <b>${m.date||'?'}</b>` + (m.n?` · n=${m.n} runs`:'');
  const k=[{l:'P_idle [W]',v:m.P_idle_W},{l:'T_idle [°C]',v:m.T_idle_C}];
  if(m.escala!=null)k.push({l:'scale',v:m.escala});
  if(m.fetch_nWb!=null)k.push({l:'fetch [nW/B]',v:m.fetch_nWb});

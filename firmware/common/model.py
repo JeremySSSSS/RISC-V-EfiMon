@@ -48,7 +48,7 @@ def cargar_coeficientes(path):
         for row in csv.reader(f):
             # salta comentarios, encabezado y filas vacias/mutiladas (p.ej. la
             # linea '#...' que LibreOffice re-guarda como ',,')
-            if not row or not row[0].strip() or row[0].startswith("#") or row[0] == "parametro":
+            if not row or not row[0].strip() or row[0].startswith("#") or row[0] == "parameter":
                 continue
             name = row[0].strip()
             c = float(row[1])

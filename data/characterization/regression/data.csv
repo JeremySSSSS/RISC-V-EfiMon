@@ -1,4 +1,4 @@
-fecha,programa,P_med_W,T_s,temp_C,n_alu,n_mul,n_mulh,n_div,c_div,n_mem,n_ctrl,n_fp_add,n_fp_mul,n_fp_fma,n_fp_div,n_fp_sqrt,n_fp_noncomp,n_fp_conv,n_fetch,mcycle,n_stall
+date,program,P_meas_W,T_s,temp_C,n_alu,n_mul,n_mulh,n_div,c_div,n_mem,n_ctrl,n_fp_add,n_fp_mul,n_fp_fma,n_fp_div,n_fp_sqrt,n_fp_noncomp,n_fp_conv,n_fetch,mcycle,n_stall
 2026-08-15 16:17:18,idle,1.148739,0.000005,39.49,21,0,0,0,0,17,0,0,0,0,0,0,0,0,376,54,16
 2026-08-15 16:17:45,dmul,1.167668,12.192405,39.86,17476039,69632000,0,0,0,13056017,4352002,0,0,0,0,0,0,0,588,121924049,17407991
 2026-08-15 16:18:15,dmul_d60,1.159815,12.255000,39.61,10321526,41123840,0,0,0,7710873,2570269,0,0,0,0,0,0,0,696,74568024,12841516

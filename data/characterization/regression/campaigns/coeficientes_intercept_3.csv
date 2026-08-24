@@ -1,5 +1,5 @@
 "# Regresion (M2, dif+intercepto, ref=mul). Gen 2026-08-15 21:13:51. n=84, R2=0.9849, b0=1.1471"
-parametro,coef,unidad
+parameter,coef,unit
 P_idle,1.146881,W
 b0,1.147134,W
 alu,3.196239e-09,J/instr
@@ -15,4 +15,4 @@ fp_div,8.094881e-09,J/instr
 fp_sqrt,3.555411e-09,J/instr
 fp_noncomp,1.850667e-09,J/instr
 fp_conv,2.367896e-09,J/instr
-stall,4.155842e-10,J/ciclo
+stall,4.155842e-10,J/cycle

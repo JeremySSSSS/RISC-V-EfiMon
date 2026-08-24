@@ -1,4 +1,4 @@
-fecha,method,programa,T_s,P_med_W,P_pred_W,err_pct,temp_C,n_alu,n_mul,n_mulh,n_div,c_div,n_mem,n_ctrl,n_fp_add,n_fp_mul,n_fp_fma,n_fp_div,n_fp_sqrt,n_fp_noncomp,n_fp_conv,n_fetch,mcycle,n_stall
+date,method,program,T_s,P_meas_W,P_pred_W,err_pct,temp_C,n_alu,n_mul,n_mulh,n_div,c_div,n_mem,n_ctrl,n_fp_add,n_fp_mul,n_fp_fma,n_fp_div,n_fp_sqrt,n_fp_noncomp,n_fp_conv,n_fetch,mcycle,n_stall
 2026-08-16 01:51:27,bucles,aqsort,24.797,1.166890,1.165173,-0.1472,39.12,84474019,0,0,0,0,28188019,29232005,0,0,0,0,0,0,0,888,247968035,106073992
 2026-08-16 01:52:10,bucles,ffma,29.892,1.171651,1.170876,-0.0662,38.87,81726023,0,0,0,0,27242017,27136002,0,0,27136000,0,0,0,54272000,556,298920035,81407993
 2026-08-16 01:52:53,bucles,flim,30.182,1.169355,1.169401,0.0039,39.24,143034026,15872000,0,0,0,15934019,15872002,0,0,0,0,0,63488000,0,600,301816043,47615996

@@ -1,5 +1,5 @@
 # Bucles dominados (M1) - PROMEDIO de 19 tandas. Generado 2026-08-15 11:00:26.,coef=(P_cat-P_idle)*T/n; div usa DIVCYC.
-parametro,coef,unidad
+parameter,coef,unit
 P_idle,1.146452e+00,W
 T_idle,3.934158e+01,C
 alu,2.433926e-09,J/instr

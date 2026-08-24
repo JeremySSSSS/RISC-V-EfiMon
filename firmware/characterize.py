@@ -166,7 +166,7 @@ def cmd_bucles(args):
     for cat in cats:
         find_elf(cat, DIR_BUCLES)
 
-    header = ["fecha", "categoria", "rep", "P_med_W", "T_s", "temp_C"] + modelo.COLS_CONTADORES
+    header = ["date", "category", "rep", "P_meas_W", "T_s", "temp_C"] + modelo.COLS_CONTADORES
     rotar_si_header_distinto(datos_csv, header)
     inbox = sheet.Inbox()
     runs = {c: [] for c in cats}
@@ -251,7 +251,7 @@ def cmd_bucles(args):
         w = csv.writer(f)
         w.writerow([f"# Bucles dominados (M1). Generado {time.strftime('%Y-%m-%d %H:%M:%S')}.",
                     "coef=(P_cat-P_idle)*T/n_i por instruccion (div: c~21 plegado)."])
-        w.writerow(["parametro", "coef", "unidad"])
+        w.writerow(["parameter", "coef", "unit"])
         w.writerow(["P_idle", f"{P_idle:.6f}", "W"])
         if T_idle is not None:
             w.writerow(["T_idle", f"{T_idle:.2f}", "C"])
@@ -262,7 +262,7 @@ def cmd_bucles(args):
     tstr = f" @ {T_idle:.1f} C" if T_idle is not None else ""
     print(f"\n=== M1 bucles: coeficientes de la sesion ===")
     print(f"P_idle = {P_idle:.4f} W{tstr}   (n_idle = {len(runs['idle'])})")
-    print(f"{'categoria':10s} {'delta[mW]':>10s} {'eventos':>15s} {'coef[nJ]':>9s}  unidad     reps")
+    print(f"{'category':10s} {'delta[mW]':>10s} {'eventos':>15s} {'coef[nJ]':>9s}  unidad     reps")
     for cat, delta, denom, coef, n in resumen:
         print(f"{cat:10s} {delta*1e3:10.2f} {denom:15,.0f} {coef*1e9:9.3f}  {'nJ/instr':9s} {n}")
     resp = respaldar_coef(coef_csv)
@@ -356,7 +356,7 @@ def leer_datos(datos_csv):
     with open(datos_csv) as f:
         for r in csv.DictReader(f):
             cont = {k: int(r.get(k, 0)) for k in modelo.COLS_CONTADORES}
-            prog = r["programa"]
+            prog = r["program"]
             if prog.endswith(("_d60", "_d30")):
                 # duty: usa el wall REAL medido (columna T_s, escrita por
                 # medir_uno desde duration_ms del ESP32). Fallback al /duty viejo
@@ -367,7 +367,7 @@ def leer_datos(datos_csv):
                     T = cont["mcycle"] / F_CLK / (0.60 if prog.endswith("_d60") else 0.30)
             else:
                 T = cont["mcycle"] / F_CLK
-            todas.append((r["programa"], float(r["P_med_W"]), T,
+            todas.append((r["program"], float(r["P_meas_W"]), T,
                           cont, r.get("temp_C", "")))
     campanas = []
     for fila in todas:
@@ -542,7 +542,7 @@ def medir_regresion(progs, no_build, datos_csv):
     if not no_build:
         run_make(DIR_REGR)
     elfs = {p: find_elf(p, DIR_REGR) for p in progs}
-    header = ["fecha", "programa", "P_med_W", "T_s", "temp_C"] + modelo.COLS_CONTADORES
+    header = ["date", "program", "P_meas_W", "T_s", "temp_C"] + modelo.COLS_CONTADORES
     rotar_si_header_distinto(datos_csv, header)
     inbox = sheet.Inbox()
     rows = []
@@ -698,7 +698,7 @@ def cmd_regresion(args):
         wc.writerow([f"# Regresion (M2, modelo {args.modelo}). Generado {time.strftime('%Y-%m-%d %H:%M:%S')}."
                      f" {desc}. n={len(cal_rows)} corridas,"
                      f" R2={info['r2']:.4f}, RMSE={info['rmse']*1e3:.2f} mW, cond={info['cond']:.1f}"])
-        wc.writerow(["parametro", "coef", "unidad"])
+        wc.writerow(["parameter", "coef", "unit"])
         wc.writerow(["P_idle", f"{info['P_idle']:.6f}", "W"])
         if "b0" in info:                              # intercepto ajustado (chequeo
             wc.writerow(["b0", f"{info['b0']:.6f}", "W"])  # de consistencia vs P_idle)
@@ -707,7 +707,7 @@ def cmd_regresion(args):
         for c in DYN:
             wc.writerow([c, f"{coefs[c]:.6e}", "J/instr"])   # todo por instruccion (div: n_div)
         if "stall" in coefs:
-            wc.writerow(["stall", f"{coefs['stall']:.6e}", "J/ciclo"])  # ciclos sin retiro
+            wc.writerow(["stall", f"{coefs['stall']:.6e}", "J/cycle"])  # ciclos sin retiro
         if "fetch" in coefs:
             wc.writerow(["fetch", f"{coefs['fetch']:.6e}", "W/byte"])  # potencia de fetch ~ footprint
 
@@ -720,7 +720,7 @@ def cmd_regresion(args):
     # categoria esta activa: con soporte bajo el coeficiente es fragil
     base = [r for r in cal_rows if not r[0].endswith(("_d60", "_d30"))]
     heredadas = set(info.get("heredadas", []))
-    print(f"\n{'categoria':10s} {'coef[nJ]':>9s}  unidad     soporte     fuente")
+    print(f"\n{'category':10s} {'coef[nJ]':>9s}  unidad     soporte     fuente")
     for c in DYN:
         sop = sum(1 for r in base if r[3][REGR[c]] > 0)
         src = "M1 (heredado)" if c in heredadas else "M2"
@@ -732,7 +732,7 @@ def cmd_regresion(args):
         print(f"{'fetch':10s} {coefs['fetch']*1e9:9.3f}  nW/byte   footprint {span}")
 
     print("\nresiduos del ajuste (medido - ajustado), peores primero:")
-    print(f"{'programa':16s} {'med[W]':>8s} {'fit[W]':>8s} {'resid[mW]':>10s} {'resid[%]':>9s}")
+    print(f"{'program':16s} {'med[W]':>8s} {'fit[W]':>8s} {'resid[mW]':>10s} {'resid[%]':>9s}")
     pares_rp = sorted(zip(cal_rows, info["pred_abs"]),
                       key=lambda rp: -abs(rp[0][1] - rp[1]))
     for r, pa in pares_rp:

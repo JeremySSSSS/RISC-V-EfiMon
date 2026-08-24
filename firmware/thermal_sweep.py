@@ -98,7 +98,7 @@ def fit(csvpath):
         w = csv.writer(fd)
         w.writerow([f"# Ajuste P_idle(T)=a+b*T del barrido {time.strftime('%Y-%m-%d %H:%M')}."
                     f" spread={spread:.1f}C, R2={r2:.4f}, n={len(T)}."])
-        w.writerow(["parametro", "valor", "unidad"])
+        w.writerow(["parameter", "valor", "unit"])
         w.writerow(["a", f"{a:.6f}", "W"])
         w.writerow(["b_W_per_C", f"{b:.8e}", "W/C"])
         w.writerow(["r2", f"{r2:.4f}", ""])
@@ -126,7 +126,7 @@ def main():
     print("Barrido termico: arranca con la placa FRIA. Idle ~15 s x cada medida.\n")
     with open(CSV, "w", newline="") as fd:
         wr = csv.writer(fd)
-        wr.writerow(["hora", "temp_C", "P_idle_W"])
+        wr.writerow(["time", "temp_C", "P_idle_W"])
         try:
             i = 1
             while i <= args.n:

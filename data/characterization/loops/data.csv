@@ -1,4 +1,4 @@
-fecha,categoria,rep,P_med_W,T_s,temp_C,n_alu,n_mul,n_mulh,n_div,c_div,n_mem,n_ctrl,n_fp_add,n_fp_mul,n_fp_fma,n_fp_div,n_fp_sqrt,n_fp_noncomp,n_fp_conv,n_fetch,mcycle,n_stall
+date,category,rep,P_meas_W,T_s,temp_C,n_alu,n_mul,n_mulh,n_div,c_div,n_mem,n_ctrl,n_fp_add,n_fp_mul,n_fp_fma,n_fp_div,n_fp_sqrt,n_fp_noncomp,n_fp_conv,n_fetch,mcycle,n_stall
 2026-08-14 23:31:03,idle,1,1.144390,0.000005,38.14,21,0,0,0,0,17,0,0,0,0,0,0,0,0,376,54,16
 2026-08-14 23:32:02,alu,1,1.168662,40.000012,38.38,395384749,0,0,0,0,10,1538461,0,0,0,0,0,0,0,1348,400000122,3076902
 2026-08-14 23:33:01,mul,1,1.159042,39.990000,38.50,6450031,387000000,0,0,0,10,2149999,0,0,0,0,0,0,0,1116,399900002,4299962

@@ -82,14 +82,14 @@ These columns appear in every raw and validation file (`*/data.csv`,
 
 | column | unit | meaning |
 |---|---|---|
-| `fecha` | local timestamp | when the run finished |
+| `date` | local timestamp | when the run finished |
 | `n_alu`, `n_mul`, `n_mulh`, `n_div`, `n_mem`, `n_ctrl` | count | retired integer instructions per category |
 | `n_fp_add`, `n_fp_mul`, `n_fp_fma`, `n_fp_div`, `n_fp_sqrt`, `n_fp_noncomp`, `n_fp_conv` | count | retired FP instructions per category |
 | `c_div` | cycles | cycles the serial divider was busy (its latency is operand-dependent) |
 | `n_fetch` | bytes | instruction footprint: range of instruction addresses touched (feeds the optional fetch term; the SoC has no I-cache) |
 | `mcycle` | cycles | total clock cycles in the window (`mcycle` CSR delta) |
 | `n_stall` | cycles | non-retiring cycles ≈ `mcycle` − (retired instructions): multi-cycle latency + pipeline bubbles |
-| `P_med_W` | W | mean power measured by the bench over the window |
+| `P_meas_W` | W | mean power measured by the bench over the window |
 | `T_s` | s | window duration (wall time; equals `mcycle` / 10 MHz) |
 | `temp_C` | °C | die temperature (XADC) during the run |
 
@@ -99,7 +99,7 @@ Dominated-loop runs (one category per loop). Shared columns above, plus:
 
 | column | unit | meaning |
 |---|---|---|
-| `categoria` | — | dominated category of the loop, or `idle` |
+| `category` | — | dominated category of the loop, or `idle` |
 | `rep` | — | repetition index of that category |
 
 ## `characterization/regression/data.csv` — M2 raw
@@ -108,13 +108,13 @@ Mixed-workload runs. Shared columns above, plus:
 
 | column | unit | meaning |
 |---|---|---|
-| `programa` | — | workload name; suffix `_d60` / `_d30` = 60 % / 30 % duty cycle (intensity sweep) |
+| `program` | — | workload name; suffix `_d60` / `_d30` = 60 % / 30 % duty cycle (intensity sweep) |
 
 ## `coefficients.csv` (both methods)
 
-Long format: `parametro, coef, unidad`. Rows:
+Long format: `parameter, coef, unit`. Rows:
 
-| `parametro` | unit | meaning |
+| `parameter` | unit | meaning |
 |---|---|---|
 | `P_idle` | W | session idle baseline, measured at rest (`wfi`) |
 | `T_idle` | °C | die temperature during that idle measurement |
@@ -145,7 +145,7 @@ instruction-count columns, plus:
 | column | unit | meaning |
 |---|---|---|
 | `method` | — | `bucles` (M1) or `regresion` (M2) |
-| `programa` | — | held-out kernel (BEEBS + custom FP), never used for calibration |
+| `program` | — | held-out kernel (BEEBS + custom FP), never used for calibration |
 | `P_pred_W` | W | power predicted by the model |
 | `err_pct` | % | `100·(P_pred − P_med) / P_med` |
 
@@ -155,7 +155,7 @@ Idle-power vs temperature sweep, source of the ≈2.9 mW/°C baseline drift.
 
 | column | unit | meaning |
 |---|---|---|
-| `hora` | HH:MM:SS | sample time |
+| `time` | HH:MM:SS | sample time |
 | `temp_C` | °C | die temperature (XADC) |
 | `P_idle_W` | W | idle power measured at that temperature |
 
@@ -168,10 +168,10 @@ that produced it.
 | column | unit | meaning |
 |---|---|---|
 | `kb` | KiB | program (code) size |
-| `rango_bytes`, `n_fetch` | bytes | instruction footprint |
+| `range_bytes`, `n_fetch` | bytes | instruction footprint |
 | `coef_nJ` | nJ | estimated fetch energy coefficient at that footprint |
 | `dP_mW` | mW | extra power over the reference loop |
-| `cic_ctrl` | cycles | cycles per `ctrl` instruction in the loop |
+| `cyc_ctrl` | cycles | cycles per `ctrl` instruction in the loop |
 | `ctrl_pct` | % | share of `ctrl` instructions |
 | `n_ctrl` | count | retired `ctrl` instructions |
 | `T_s` | s | window duration |

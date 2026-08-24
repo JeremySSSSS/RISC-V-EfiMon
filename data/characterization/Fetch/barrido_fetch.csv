@@ -1,4 +1,4 @@
-kb,coef_nJ,rango_bytes,cic_ctrl,dP_mW,ctrl_pct,T_s,n_fetch,n_ctrl
+kb,coef_nJ,range_bytes,cyc_ctrl,dP_mW,ctrl_pct,T_s,n_fetch,n_ctrl
 4,5.9114,3592,2.826,20.92,96.63,8.432,3592,29839999
 8,5.8792,7900,2.824,20.82,96.66,9.816,7900,34760000
 16,6.0538,16508,2.823,21.44,96.78,10.508,16508,37220000

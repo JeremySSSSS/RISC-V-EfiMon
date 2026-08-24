@@ -66,12 +66,12 @@ def run_gdb():
 
 def main():
     w = run_gdb()
-    row = {"fecha": time.strftime("%Y-%m-%d %H:%M:%S"), "programa": "mixto_float"}
+    row = {"date": time.strftime("%Y-%m-%d %H:%M:%S"), "program": "mixto_float"}
     for name, idx in LO.items():
         row[name] = val(w, idx)
     row["mcycle"] = (w[29] - w[28]) & 0xFFFFFFFF
 
-    header = ["fecha", "programa", "n_alu", "n_mul", "n_mulh", "n_div",
+    header = ["date", "program", "n_alu", "n_mul", "n_mulh", "n_div",
               "n_mem", "n_ctrl", "n_fp_add", "n_fp_mul", "n_fp_fma",
               "n_fp_div", "n_fp_sqrt", "n_fp_noncomp", "n_fp_conv",
               "c_div", "mcycle"]
